@@ -1,14 +1,10 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { formatDate, STATUS_LABELS } from '../lib/labels'
 
 const PROJECT_COLUMNS = 'id, name, system_under_validation, status, planned_start, planned_end, created_at'
 
-function formatDate(value) {
-  if (!value) return null
-  // Dates are calendar dates (no time), so format without shifting time zones.
-  const [y, m, d] = value.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-}
 
 export default function Projects() {
   const [projects, setProjects] = useState([])
@@ -120,9 +116,11 @@ export default function Projects() {
       ) : (
         <ul className="project-list" aria-label="Projects">
           {projects.map((p) => (
-            <li key={p.id} className="card">
+            <li key={p.id} className="card project-card">
               <div>
-                <strong>{p.name}</strong>
+                <Link to={`/projects/${p.id}`} className="project-link">
+                  <strong>{p.name}</strong>
+                </Link>
                 {p.system_under_validation && <div className="muted">{p.system_under_validation}</div>}
                 {(p.planned_start || p.planned_end) && (
                   <div className="muted small">
@@ -130,7 +128,7 @@ export default function Projects() {
                   </div>
                 )}
               </div>
-              <span className={`status status-${p.status}`}>{p.status}</span>
+              <span className={`status status-${p.status}`}>{STATUS_LABELS[p.status] ?? p.status}</span>
             </li>
           ))}
         </ul>
