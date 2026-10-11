@@ -1,0 +1,86 @@
+id,folder,title,requirement,verification,rationale,status
+SRS-001,Access,Sign-in required,System requires users to sign in with email and password before any project data is displayed.,Test (automated),Only identified users may access regulated records.,Draft
+SRS-002,Access,No self-registration,"Only a System Admin (a system-level flag on the user account, separate from project roles) is able to create user accounts
+A user who is not a System Admin is unable to create an account
+Users are unable to register themselves",Test (automated),Controlled access: a system administrator decides who has an account.,Draft
+SRS-003,Access,Project roles,"User is able to assign the following access roles to a user, per project
+- Admin
+- Manager
+- Val Specialist
+- Val Associate
+- QA
+- Viewer",Test (automated),Different responsibilities need different permissions.,Draft
+SRS-004,Access,Project access,"System restricts each user's access to projects in which they are a member
+User is unable to view or change records of a project they are not a member of, including through direct API requests",Test (automated),Users must not see or change records of projects they do not belong to.,Draft
+SRS-005,Access,Role permissions,"System applies a default set of permissions to each project role, stored as data
+When a role's permissions are changed, System records an audit entry",Test (automated),Each role can do only what its responsibilities require. Screens for editing permissions are planned for v1.5.,Draft
+SRS-006,Access,Database-level enforcement,System enforces role and project permissions in the database so that requests made outside the user interface are subject to the same restrictions.,Test (automated),Permissions that exist only in the UI can be bypassed through the API.,Draft
+SRS-007,Access,Viewer is read-only,"System restricts a user's data access in accordance with role permission (e.g., If View-only, user is unable to edit data)",Test (automated),"Read-only access for reviewers, auditors and stakeholders.",Draft
+SRS-008,Access,Inactivity sign-out,System logs user out of application after 15 minutes of inactivity.,Test (automated),Prevents an unattended session from being used by someone else.,Draft
+SRS-009,Projects,Create project,"User is able to create a project with a name, a system under validation, and planned start and end dates.",Test (automated),Everything in Sigil hangs off a project.,Draft
+SRS-010,Projects,Project list,"System displays all projects that user is assigned to
+System does NOT display projects that user is NOT assigned to",Test (automated),Base page of the application.,Draft
+SRS-011,Projects,No project deletion,"User is unable to delete a project
+User is able to archive a project
+If a project is archived, data in the project is read-only for all roles
+User is able to de-archive a project
+Only project Admins are able to archive or de-archive a project
+When a project is archived or de-archived, System records an audit entry",Test (automated),Preserves the complete record history.,Draft
+SRS-012,Projects,Manage members,"Admin users are able to add and remove members to a project
+When a user is added to a project, System records an audit trail entry
+When a user is removed from a project, System records an audit trail entry",Test (automated),Access changes are themselves auditable events.,Draft
+SRS-013,Trackers,Default trackers,"When a project is created, System automatically generates the following trackers:
+- SRS
+- SDS
+- RISK
+- TC
+- TR
+- DEV",Test (automated),Every validation project starts with the same core structure.,Draft
+SRS-014,Trackers,Unique item IDs,System assigns each item an ID made of its tracker prefix and a sequence number (e.g. SRS-004) that is unique within the project and never reused.,Test (automated),IDs are cited in documents and test code; reuse would break traceability.,Draft
+SRS-015,Trackers,Configuration as data,"System stores each tracker's field definitions, workflow states, transitions and link types as data, seeded with defaults for each tracker type.",Inspection,Allows configuration to change without code changes (editing screens planned for v1.5).,Draft
+SRS-016,Trackers,Generated item forms,"When a tracker item is created, System generates item form from the tracker's field definitions
+System prevents saving a tracker item while a required field is empty.",Test (automated),Forms must follow configuration rather than hard-coded layouts.,Draft
+SRS-017,Trackers,Folders,"User is able to create a folder in a tracker
+User is able to drag tracker items to be nested in a folder",Test (automated),Organization of large trackers.,Draft
+SRS-018,Trackers,Filtering,"User is able to filter tracker items by state, folder and field values.",Test (automated),Users need to find items quickly.,Draft
+SRS-019,Trackers,Item links,System allows links between different tracker items (e.g. TC verifies SRS) and displays each link on both linked items.,Test (automated),Links are the basis of traceability.,Draft
+SRS-020,Trackers,Item versioning,"System creates a new version of an item each time its content changes
+User is able to view past versions of a tracker item",Test (automated),Approvals and test runs refer to specific versions.,Draft
+SRS-021,Workflow,Defined transitions only,System enforces state transitions for a tracker item in accordance with the tracker's transition configuration,Test (automated),Enforces the review process.,Draft
+SRS-022,Workflow,Signature-required transitions,"If a transition is configured as a review gate, System requires an electronic signature, with a defined meaning (authored, reviewed, approved or executed)",Test (automated),Review gates are where accountability is recorded.,Draft
+SRS-023,Workflow,Signature re-authentication,"System requires signer to re-enter their password at the time of signing
+System records the signer, meaning, date and time, and the item version signed in an audit entry",Test (automated),Follows 21 CFR Part 11 signature practices.,Draft
+SRS-024,Workflow,Signature display,"System displays each signature with the signer's printed name, the date and time, and the meaning of the signature
+Tracker configuration may add signature fields but cannot remove these three",Test (automated),"Signature manifestation, following Part 11 practices.",Draft
+SRS-025,Workflow,Approved items locked,User is unable to edit data of an approved item,Test (automated),Approved content must not change silently.,Draft
+SRS-026,Workflow,Signatures bound to versions,"When an approved item is moved back to In Progress, System removes the current approval from the item
+Prior signatures remain visible in the item's history, linked to the version they signed",Test (automated),Later edits must visibly break earlier signatures.,Draft
+SRS-027,Workflow,Independent approval,System restricts author of an item version from signing as its approver.,Test (automated),Independent review.,Draft
+SRS-028,Audit trail,Audit every change,"System records an audit entry for every create, update and state change of every record with the user, timestamp, field, old value and new value.",Test (automated),"Complete, attributable record history.",Draft
+SRS-029,Audit trail,Reason for change,"When an approved item is moved back to in progress, System requires user to enter reason for change",Test (automated),Explains why approved content changed.,Draft
+SRS-030,Audit trail,Audit entries immutable,"System prevents any user, including administrators, from modifying or deleting audit entries.",Test (automated),An editable audit trail cannot be trusted.,Draft
+SRS-031,Audit trail,Audit captured in database,"System captures audit entries in the database itself so that changes made by any route, including direct API calls, are recorded.",Test (automated),Application code can be bypassed; database triggers cannot.,Draft
+SRS-032,Audit trail,Item history view,System displays the audit history of an item on the item page.,Test (automated),Reviewers and auditors need to see what changed.,Draft
+SRS-033,Audit trail,Time zones,System stores timestamps in UTC and displays them in the user's local time with the time zone shown.,Test (automated),Unambiguous times across locations.,Draft
+SRS-034,Test execution,Test case steps,"User is able to define steps for a Test Case with each step containing an action and an expected result
+User is able to set a Test Case's execution type to Manual or Automated",Test (automated),Basic test case structure.,Draft
+SRS-035,Test execution,Manual execution,"User is able to run an approved test case
+System records test results, recording an actual result, a pass/fail outcome for each step and attached evidence files.",Test (automated),Manual test execution with evidence.,Draft
+SRS-036,Test execution,Dry and formal runs,"System classifies a test run as formal only if the test case version was approved before the run started
+If a test run is run before a test case is approved, the test run is designated as a dry run and DOES NOT count toward coverage.",Test (automated),Protocols must be approved before execution counts.,Draft
+SRS-037,Test execution,Deviation on failure,"System prompts the user executing the test run to open a deviation when a step fails
+If a deviation is created from a test case failure, System links the deviation to the failed step, test run and test case.",Test (automated),Failures must be investigated and resolved.,Draft
+SRS-038,Test execution,Run sign-off,"When the user executing a test run completes it, System requires the executor's signature
+After the executor signs, System requires a review signature from a different user before the test run is complete",Test (automated),Execution is attested by the person who ran it and checked by a second person. Each test run covers one test case in v1; grouping runs into test sets is planned for later.,Draft
+SRS-039,Automation,Results API,System provides an authenticated API that accepts automated test results identified by test case ID.,Test (automated),Automation-first: CI results become test runs.,Draft
+SRS-040,Automation,Unknown IDs rejected,System rejects and logs results for test case IDs that do not exist in the project.,Test (automated),Results must never be attached to the wrong record.,Draft
+SRS-041,Automation,Run context,"System records the commit SHA, CI build URL, environment, browser and tool versions with each automated test run.",Test (automated),Shows exactly what was tested and where.,Draft
+SRS-042,Automation,Script version pinning,"System records the commit SHA of an automated test case's script at approval
+System flags a run as drift, and returns the test case for review, when a result arrives with a different SHA.",Test (automated),A changed script must not inherit an earlier approval.,Draft
+SRS-043,Automation,Runs on test case,"System displays all runs of a test case on its page, grouped by test case version, with result, run type, commit SHA and review status.",Test (automated),Execution history lives with the test case.,Draft
+SRS-044,Traceability,Trace matrix,"System generates a traceability matrix showing each SRS item, its linked RISK items and test cases, and the latest formal run result of each test case.",Test (automated),Core validation evidence.,Draft
+SRS-045,Traceability,Coverage status,"System displays an SRS item as not covered when any linked test case lacks a passing, reviewed formal run, or when a linked deviation is open.",Test (automated),"Coverage must reflect reality, not just links.",Draft
+SRS-046,Reports,Export,"User is able to export selected items to CSV and Excel, and test cases to PDF, with options for which runs and evidence to include.",Test (automated),Records must be deliverable in the client's format.,Draft
+SRS-047,Reports,Import,"System imports items from CSV, showing a preview with validation errors before any item is created.",Test (automated),"Bulk loading, including Sigil's own SRS.",Draft
+SRS-048,Releases,Release baselines,"System allows a release to be created as a baseline that records the current versions of selected items and their formal runs
+System prevents the baseline for a release from changing after completion",Test (automated),A validated release must refer to fixed content.,Draft
