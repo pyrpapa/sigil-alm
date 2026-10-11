@@ -24,7 +24,7 @@ test('user can create a project with planned dates', { tag: '@SRS-009' }, async 
   const project = page.getByRole('list', { name: 'Projects' }).getByRole('listitem').filter({ hasText: name })
   await expect(project).toBeVisible()
   await expect(project).toContainText('Sigil v1.0')
-  await expect(project).toContainText('planning')
+  await expect(project).toContainText('Planning')
 
   // Still there after a reload: it was saved, not just shown
   await page.reload()

@@ -83,12 +83,14 @@ test('tracker preview: SRS list and a manual test run', async ({ page }) => {
   // Open the manual test case and run it
   await page.goto(page.url().replace(/\/trackers\/SRS$/, '/trackers/TC/TC-004'))
   await page.getByRole('link', { name: 'Run this test' }).click()
+  // Wait until every step is on screen before filling them in
   const steps = page.locator('.run-step')
-  const count = await steps.count()
-  for (let i = 0; i < count; i++) {
+  await expect(steps).toHaveCount(5)
+  for (let i = 0; i < 5; i++) {
     await steps.nth(i).getByLabel('Actual result').fill('As expected')
     await steps.nth(i).getByRole('button', { name: 'Pass' }).click()
   }
+  await expect(page.getByText('5 of 5 steps recorded')).toBeVisible()
   await page.getByRole('button', { name: 'Finish and sign…' }).click()
   await page.getByLabel('Re-enter your password').fill('preview')
   await page.getByRole('button', { name: 'Sign as Executed' }).click()
