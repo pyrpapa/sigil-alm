@@ -5,20 +5,23 @@ import { STATUS_LABELS } from '../../lib/labels'
 
 const PROJECT_COLUMNS = 'id, name, system_under_validation, status, planned_start, planned_end, repository_url, created_at, created_by'
 
-async function fetchProject(projectId) {
-  const [projectRes, permsRes] = await Promise.all([
+async function fetchProject(projectId, userId) {
+  const [projectRes, permsRes, roleRes] = await Promise.all([
     supabase.from('projects').select(PROJECT_COLUMNS).eq('id', projectId).maybeSingle(),
     supabase.rpc('my_project_permissions', { p_project: projectId }),
+    supabase.from('project_members').select('role').eq('project_id', projectId).eq('user_id', userId).maybeSingle(),
   ])
-  if (projectRes.error || permsRes.error) return { state: 'error', error: (projectRes.error || permsRes.error).message }
+  const failed = projectRes.error || permsRes.error || roleRes.error
+  if (failed) return { state: 'error', error: failed.message }
   if (!projectRes.data) return { state: 'missing' }
-  return { state: 'ready', project: projectRes.data, permissions: permsRes.data ?? [] }
+  return { state: 'ready', project: projectRes.data, permissions: permsRes.data ?? [], role: roleRes.data?.role ?? null }
 }
 
 export default function ProjectLayout({ session }) {
   const { projectId } = useParams()
   const [project, setProject] = useState(null)
   const [permissions, setPermissions] = useState([])
+  const [role, setRole] = useState(null)
   const [state, setState] = useState('loading') // loading | ready | missing | error
   const [error, setError] = useState('')
 
@@ -27,17 +30,19 @@ export default function ProjectLayout({ session }) {
     setError(result.error ?? '')
     if (result.project) setProject(result.project)
     if (result.permissions) setPermissions(result.permissions)
+    if (result.role !== undefined) setRole(result.role)
   }, [])
 
-  const load = useCallback(() => fetchProject(projectId).then(apply), [projectId, apply])
+  const userId = session.user.id
+  const load = useCallback(() => fetchProject(projectId, userId).then(apply), [projectId, userId, apply])
 
   useEffect(() => {
     let current = true
-    fetchProject(projectId).then((result) => current && apply(result))
+    fetchProject(projectId, userId).then((result) => current && apply(result))
     return () => {
       current = false
     }
-  }, [projectId, apply])
+  }, [projectId, userId, apply])
 
   if (state === 'loading') return <p className="muted">Loading project…</p>
   if (state === 'error')
@@ -88,7 +93,7 @@ export default function ProjectLayout({ session }) {
         <NavLink to="activity">Activity</NavLink>
       </nav>
 
-      <Outlet context={{ project, setProject, can, reload: load, userId: session.user.id }} />
+      <Outlet context={{ project, setProject, can, role, reload: load, userId }} />
     </section>
   )
 }

@@ -2,14 +2,35 @@
 
 export const ROLE_LABELS = {
   admin: 'Admin',
-  manager: 'Manager',
-  val_specialist: 'Val Specialist',
-  val_associate: 'Val Associate',
+  specialist: 'Specialist',
+  associate: 'Associate',
   qa: 'QA',
   viewer: 'Viewer',
 }
 
 export const ROLES = Object.keys(ROLE_LABELS)
+
+// Roles that can be required to sign a review gate (not Viewer).
+export const REVIEW_ROLES = ['qa', 'specialist', 'associate', 'admin']
+
+export const REVIEW_MEANINGS = ['Approved', 'Reviewed', 'Verified', 'Executed']
+
+export const FIELD_TYPE_LABELS = {
+  text: 'Short text',
+  long_text: 'Long text',
+  number: 'Number',
+  date: 'Date',
+  select: 'Dropdown',
+  user: 'Project member',
+  steps: 'Test steps',
+}
+
+export const ACTION_LABELS = {
+  set_value: 'Set to a value',
+  set_today: "Set to today's date",
+  set_current_user: 'Set to the current user',
+  clear: 'Clear the field',
+}
 
 export const STATUS_LABELS = {
   planning: 'Planning',

@@ -7,7 +7,7 @@ set search_path = public, extensions;
 select plan(31);
 
 -- Test users ----------------------------------------------------------------
--- alice: creates the project (Admin)   bob: Viewer   dave: Val Specialist
+-- alice: creates the project (Admin)   bob: Viewer   dave: Specialist
 -- carol: not a member                  (passwords not needed at database level)
 insert into auth.users (id, email, raw_user_meta_data) values
   ('a1111111-1111-4111-8111-111111111111', 'alice@test.local', '{"full_name": "Alice Admin"}'),
@@ -52,7 +52,7 @@ select is(
   (select count(*)::int from default_role_permissions),
   'Default role permissions are copied into the new project (SRS-005)');
 
--- Alice adds Bob (Viewer) and Dave (Val Specialist)
+-- Alice adds Bob (Viewer) and Dave (Specialist)
 select set_config('request.jwt.claims', '{"sub": "a1111111-1111-4111-8111-111111111111", "role": "authenticated"}', true);
 set local role authenticated;
 
@@ -64,7 +64,7 @@ select lives_ok(
 
 select lives_ok(
   $$ insert into project_members (project_id, user_id, role, added_by)
-     select id, 'd4444444-4444-4444-8444-444444444444', 'val_specialist', 'a1111111-1111-4111-8111-111111111111'
+     select id, 'd4444444-4444-4444-8444-444444444444', 'specialist', 'a1111111-1111-4111-8111-111111111111'
      from projects where name = 'Access Test' $$,
   'A project Admin can add members with any role (SRS-003, SRS-012)');
 
@@ -134,7 +134,7 @@ select results_eq(
 
 reset role;
 
--- Dave: Val Specialist ----------------------------------------------------------
+-- Dave: Specialist ----------------------------------------------------------
 select set_config('request.jwt.claims', '{"sub": "d4444444-4444-4444-8444-444444444444", "role": "authenticated"}', true);
 set local role authenticated;
 

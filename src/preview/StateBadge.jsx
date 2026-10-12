@@ -2,6 +2,7 @@ const TONES = {
   Approved: 'good',
   Complete: 'good',
   Passed: 'good',
+  Recorded: 'good',
   'In Review': 'warn',
   'Pending review': 'warn',
   Investigating: 'warn',

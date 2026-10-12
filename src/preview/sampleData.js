@@ -158,6 +158,7 @@ const tcItems = [
     executionType: 'Manual',
     links: [{ type: 'verifies', to: 'SRS-011' }],
     steps: [
+      { kind: 'document', action: 'Record the test environment', fields: ['Browser and version', 'Operating system', 'Sigil URL'] },
       { action: 'Sign in as a project Admin and open the project Overview', expected: 'Archive project section is visible' },
       { action: 'Select Archive…, enter a reason and confirm', expected: 'Status changes to Archived and a read-only notice is shown' },
       { action: 'Try to edit the project details', expected: 'Edit details is not available' },
@@ -206,7 +207,7 @@ const trItems = [
   { key: 'TR-004', tc: 'TC-001', tcVersion: 2, runType: 'Formal', source: 'CI', result: 'Passed', sha: SHA_V2, by: PEOPLE.ci, at: '2026-10-11T13:22:00Z', review: 'Pending review' },
   { key: 'TR-005', tc: 'TC-002', tcVersion: 2, runType: 'Formal', source: 'CI', result: 'Passed', sha: SHA_DRIFT, by: PEOPLE.ci, at: '2026-10-11T13:22:00Z', review: 'Blocked: script drift', drift: true },
   { key: 'TR-006', tc: 'TC-003', tcVersion: 1, runType: 'Formal', source: 'CI', result: 'Passed', sha: SHA_V2, by: PEOPLE.ci, at: '2026-10-11T13:22:00Z', review: `Reviewed by ${PEOPLE.qa}` },
-  { key: 'TR-007', tc: 'TC-004', tcVersion: 1, runType: 'Formal', source: 'Manual', result: 'Failed', by: PEOPLE.david, at: '2026-10-11T10:02:00Z', review: `Reviewed by ${PEOPLE.qa}`, failedStep: 4 },
+  { key: 'TR-007', tc: 'TC-004', tcVersion: 1, runType: 'Formal', source: 'Manual', result: 'Failed', by: PEOPLE.david, at: '2026-10-11T10:02:00Z', review: `Reviewed by ${PEOPLE.qa}`, failedStep: 5 },
   { key: 'TR-008', tc: 'TC-005', tcVersion: 1, runType: 'Formal', source: 'CI', result: 'Passed', sha: SHA_V2, by: PEOPLE.ci, at: '2026-10-11T13:22:00Z', review: `Reviewed by ${PEOPLE.qa}` },
 ].map((tr) => ({
   ...tr,

@@ -62,10 +62,11 @@ SRS-030,Audit trail,Audit entries immutable,"System prevents any user, including
 SRS-031,Audit trail,Audit captured in database,"System captures audit entries in the database itself so that changes made by any route, including direct API calls, are recorded.",Test (automated),Application code can be bypassed; database triggers cannot.,Draft
 SRS-032,Audit trail,Item history view,System displays the audit history of an item on the item page.,Test (automated),Reviewers and auditors need to see what changed.,Draft
 SRS-033,Audit trail,Time zones,System stores timestamps in UTC and displays them in the user's local time with the time zone shown.,Test (automated),Unambiguous times across locations.,Draft
-SRS-034,Test execution,Test case steps,"User is able to define steps for a Test Case with each step containing an action and an expected result
+SRS-034,Test execution,Test case steps,"User is able to define steps for a Test Case, where each step is either a verification step with an action and an expected result, or a documentation step with an action and the values to record
 User is able to set a Test Case's execution type to Manual or Automated",Test (automated),Basic test case structure.,Draft
 SRS-035,Test execution,Manual execution,"User is able to run an approved test case
-System records test results, recording an actual result, a pass/fail outcome for each step and attached evidence files.",Test (automated),Manual test execution with evidence.,Draft
+System records an actual result and a pass/fail outcome for each verification step
+When the user passes a verification step without entering an actual result, System fills the actual result in from the expected result",Test (automated),"Manual test execution. A pass means the actual result matched the expected result, so retyping it adds effort, not information.",Draft
 SRS-036,Test execution,Dry and formal runs,"System classifies a test run as formal only if the test case version was approved before the run started
 If a test run is run before a test case is approved, the test run is designated as a dry run and DOES NOT count toward coverage.",Test (automated),Protocols must be approved before execution counts.,Draft
 SRS-037,Test execution,Deviation on failure,"System prompts the user executing the test run to open a deviation when a step fails
@@ -84,3 +85,7 @@ SRS-046,Reports,Export,"User is able to export selected items to CSV and Excel, 
 SRS-047,Reports,Import,"System imports items from CSV, showing a preview with validation errors before any item is created.",Test (automated),"Bulk loading, including Sigil's own SRS.",Draft
 SRS-048,Releases,Release baselines,"System allows a release to be created as a baseline that records the current versions of selected items and their formal runs
 System prevents the baseline for a release from changing after completion",Test (automated),A validated release must refer to fixed content.,Draft
+SRS-049,Test execution,Documentation steps,"During a test run, System requires the user to enter every value named by a documentation step before the step can be recorded
+System records the entered values with the test run",Test (automated),"Some steps capture objective evidence (versions, settings, IDs) rather than compare against an expected result.",Draft
+SRS-050,Test execution,Run evidence,"User is able to attach evidence files to a test run as a whole and optionally associate each file with a step
+User is able to record the screen during a manual test run and attach the recording to the run as evidence",Test (automated),"Evidence is gathered once per run, not demanded at every step; a screen recording shows the whole execution.",Draft

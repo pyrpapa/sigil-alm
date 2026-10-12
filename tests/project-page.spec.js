@@ -71,27 +71,51 @@ test('project page: members and repository link', { tag: ['@SRS-012'] }, async (
   await expect(page.getByRole('table', { name: 'Audit trail' })).toContainText('Linked a repository')
 })
 
-test('tracker preview: SRS list and a manual test run', async ({ page }) => {
+test('test run preview: documentation step, pass fills actual result, fail needs a reason, run evidence, executor signature', { tag: ['@SRS-035', '@SRS-049', '@SRS-050'] }, async ({ page }) => {
   test.skip(!writesAllowed, 'Needs a project, so runs only against the throwaway CI database')
   await signIn(page)
   await createAndOpenProject(page, `E2E Preview ${Date.now()}`)
 
-  await page.getByRole('link', { name: 'Trackers' }).click()
-  await page.getByRole('link', { name: /SRS\s/ }).click()
-  await expect(page.getByRole('table', { name: 'SRS items' })).toContainText('Project access')
+  await page.goto(page.url().replace(/\/$/, '') + '/preview')
+  await page.getByRole('link', { name: /TC-004/ }).click()
 
-  // Open the manual test case and run it
-  await page.goto(page.url().replace(/\/trackers\/SRS$/, '/trackers/TC/TC-004'))
-  await page.getByRole('link', { name: 'Run this test' }).click()
   // Wait until every step is on screen before filling them in
   const steps = page.locator('.run-step')
-  await expect(steps).toHaveCount(5)
-  for (let i = 0; i < 5; i++) {
-    await steps.nth(i).getByLabel('Actual result').fill('As expected')
-    await steps.nth(i).getByRole('button', { name: 'Pass' }).click()
-  }
-  await expect(page.getByText('5 of 5 steps recorded')).toBeVisible()
+  await expect(steps).toHaveCount(6)
+
+  // Step 1 is a documentation step: Recorded stays disabled until every value is filled in
+  const env = steps.nth(0)
+  await expect(env.getByRole('button', { name: 'Recorded' })).toBeDisabled()
+  await env.getByLabel('Browser and version').fill('Chromium 141')
+  await env.getByLabel('Operating system').fill('Linux')
+  await env.getByLabel('Sigil URL').fill('http://localhost:5173')
+  await env.getByRole('button', { name: 'Recorded' }).click()
+
+  // Pass fills the actual result in from the expected result
+  for (let i = 1; i < 6; i++) await steps.nth(i).getByRole('button', { name: 'Pass' }).click()
+  await expect(steps.nth(1).getByLabel(/Actual result/)).toHaveValue('Archive project section is visible')
+  await expect(page.getByText('6 of 6 steps recorded')).toBeVisible()
+
+  // Fail clears the filled-in text and requires a failure reason before the run can finish
+  const step5 = steps.nth(4)
+  await step5.getByRole('button', { name: 'Fail' }).click()
+  const reason = step5.getByLabel(/What actually happened/)
+  await expect(reason).toHaveValue('')
+  await expect(reason).toBeFocused()
+  await expect(step5.getByText('Enter the failure reason.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Finish and sign…' })).toBeDisabled()
+  await reason.fill('No "Archived the project" entry was shown')
+  await expect(step5.getByText('Enter the failure reason.')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Finish and sign…' })).toBeEnabled()
+
+  // Evidence is attached once for the whole run, optionally tied to a step
+  await page.getByLabel('Attach files').setInputFiles({ name: 'archived-notice.png', mimeType: 'image/png', buffer: Buffer.from('png') })
+  const evidence = page.getByRole('list', { name: 'Attached evidence' })
+  await expect(evidence).toContainText('archived-notice.png')
+  await evidence.getByLabel('Supports').selectOption({ label: 'Step 3' })
+
   await page.getByRole('button', { name: 'Finish and sign…' }).click()
+  await expect(page.getByText('1 evidence file')).toBeVisible()
   await page.getByLabel('Re-enter your password').fill('preview')
   await page.getByRole('button', { name: 'Sign as Executed' }).click()
   await expect(page.getByText('recorded (preview)')).toBeVisible()

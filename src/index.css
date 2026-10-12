@@ -668,6 +668,186 @@ tbody tr:last-child td {
   background: transparent;
 }
 
+.needs-reason textarea {
+  border-color: var(--bad);
+  outline: 2px solid var(--bad);
+  outline-offset: -1px;
+}
+
+.needs-reason .required {
+  color: var(--bad);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.run-step-actions.end {
+  justify-content: flex-end;
+}
+
+/* Documentation steps (SRS-049) */
+.step-kind {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--preview-bg);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+td > .step-kind {
+  margin-left: 0;
+}
+
+.step-row {
+  border-left: 3px solid transparent;
+  padding-left: 0.4rem;
+}
+
+.step-row.step-document {
+  border-left-color: var(--accent);
+}
+
+.record-fields {
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.record-fields legend {
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0;
+  margin-bottom: 0.25rem;
+}
+
+.record-field-row {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.record-field-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.record-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.1rem;
+}
+
+.record-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.6rem;
+}
+
+/* Run evidence and screen recording (SRS-050) */
+.evidence-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.evidence-main {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.evidence-video {
+  width: min(24rem, 100%);
+  border-radius: 6px;
+  background: #000;
+}
+
+.evidence-tools {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.inline-label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.recorder-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border: 1px solid var(--bad);
+  background: var(--bad-bg);
+}
+
+.recorder-bar.is-recording {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 5;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.15);
+}
+
+.recorder-text {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.recorder-bar.is-recording .recorder-text {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.rec-clock {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--bad);
+}
+
+button.record-button {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: var(--surface); /* white in light mode, dark on the lighter red in dark mode */
+  font-weight: 600;
+  padding: 0.6rem 1.2rem;
+}
+
+button.record-button.stop {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--surface);
+}
+
+.recording-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: var(--bad);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
 .run-footer {
   display: flex;
   justify-content: space-between;
@@ -710,4 +890,209 @@ tbody tr:last-child td {
 .tracker-layout > *,
 .item-grid > * {
   min-width: 0;
+}
+
+/* ---- Phase 2d: trackers, items, configuration ---- */
+.required {
+  color: var(--bad);
+}
+
+.stack-sm {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.tracker-card {
+  display: grid;
+  gap: 0.5rem;
+  align-content: start;
+}
+
+.tracker-card-link {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.tracker-card:hover {
+  border-color: var(--accent);
+}
+
+.config-link {
+  color: var(--muted);
+}
+
+a.button.secondary-link {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* Tabs that are buttons (item and config pages) */
+.tabs .tab {
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  margin-bottom: -1px;
+  padding: 0.5rem 0.9rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.tabs .tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Workflow card on the item page */
+.workflow-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.state-path {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.state-path li + li::before {
+  content: '→ ';
+}
+
+.state-path li.current {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.review-status {
+  padding: 0.6rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.review-status.pending {
+  background: var(--warn-bg);
+}
+
+.review-status.done {
+  background: var(--good-bg);
+}
+
+.workflow-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.move-form,
+.signature-dialog {
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+.links-note {
+  margin: 1rem 0 0;
+}
+
+details.version summary {
+  cursor: pointer;
+}
+
+/* Steps editor */
+.steps-editor {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.steps-editor legend {
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0 0.25rem;
+}
+
+.step-row {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr 1fr auto;
+  gap: 0.5rem;
+  align-items: start;
+}
+
+.step-number {
+  font-weight: 700;
+  padding-top: 1.6rem;
+  color: var(--muted);
+}
+
+.step-tools {
+  display: flex;
+  gap: 0.25rem;
+  padding-top: 1.5rem;
+}
+
+/* Configuration tables */
+tr.retired td {
+  opacity: 0.55;
+}
+
+.inline-edit {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+td input:not([type='checkbox']),
+td select {
+  min-width: 8rem;
+  max-width: 100%;
+}
+
+td > input + input,
+td > input + button {
+  margin-top: 0.35rem;
+}
+
+.matrix td,
+.matrix th {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.matrix th[scope='row'] {
+  text-align: left;
+}
+
+.matrix .checkbox {
+  justify-content: center;
+}
+
+.add-state {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+@media (max-width: 760px) {
+  .step-row {
+    grid-template-columns: 1fr;
+  }
+
+  .step-number,
+  .step-tools {
+    padding-top: 0;
+  }
 }

@@ -10,8 +10,10 @@ import ProjectMembers from './pages/project/ProjectMembers'
 import ProjectActivity from './pages/project/ProjectActivity'
 import ProjectTrackers from './pages/project/ProjectTrackers'
 import ProjectRepository from './pages/project/ProjectRepository'
-import TrackerView from './preview/TrackerView'
-import ItemView from './preview/ItemView'
+import TrackerPage from './pages/tracker/TrackerPage'
+import TrackerConfig from './pages/tracker/TrackerConfig'
+import ItemPage from './pages/tracker/ItemPage'
+import PreviewRuns from './preview/PreviewRuns'
 import RunView from './preview/RunView'
 
 export default function App() {
@@ -39,10 +41,12 @@ export default function App() {
           <Route path="/projects/:projectId" element={<ProjectLayout session={session} />}>
             <Route index element={<ProjectOverview />} />
             <Route path="trackers" element={<ProjectTrackers />} />
-            {/* Preview screens on sample data until real trackers arrive (Phase 2d) */}
-            <Route path="trackers/:trackerKey" element={<TrackerView />} />
-            <Route path="trackers/:trackerKey/:itemKey" element={<ItemView />} />
-            <Route path="trackers/:trackerKey/:itemKey/run" element={<RunView />} />
+            <Route path="trackers/:typeKey" element={<TrackerPage />} />
+            <Route path="trackers/:typeKey/config" element={<TrackerConfig />} />
+            <Route path="trackers/:typeKey/:itemKey" element={<ItemPage />} />
+            {/* Test execution preview on sample data until Phase 3 */}
+            <Route path="preview" element={<PreviewRuns />} />
+            <Route path="preview/:itemKey" element={<RunView />} />
             <Route path="repository" element={<ProjectRepository />} />
             <Route path="members" element={<ProjectMembers />} />
             <Route path="activity" element={<ProjectActivity />} />
