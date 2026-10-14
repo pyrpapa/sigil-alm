@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useOutletContext, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { isEmpty, loadMembers, loadTracker } from '../../lib/trackers'
+import { isEmpty, loadLinkTypes, loadMembers, loadTracker } from '../../lib/trackers'
 import { ACTION_LABELS, formatTimestamp, ROLE_LABELS } from '../../lib/labels'
 import FieldValue from '../../components/FieldValue'
 import ItemForm from './ItemForm'
@@ -18,7 +18,7 @@ async function fetchItem(projectId, typeKey, itemKey) {
     .maybeSingle()
   if (error) throw error
   if (!item) return { missing: true }
-  const [members, sigs, versions, audit] = await Promise.all([
+  const [members, sigs, versions, audit, links, linkTypes] = await Promise.all([
     loadMembers(projectId),
     supabase.from('item_signatures').select('*').eq('item_id', item.id).order('signed_at'),
     supabase.from('item_versions').select('*').eq('item_id', item.id).order('version', { ascending: false }),
@@ -28,9 +28,20 @@ async function fetchItem(projectId, typeKey, itemKey) {
       .eq('table_name', 'items')
       .eq('record_id', item.id)
       .order('id', { ascending: false }),
+    supabase.rpc('item_link_list', { p_item: item.id }),
+    loadLinkTypes(projectId),
   ])
-  for (const r of [sigs, versions, audit]) if (r.error) throw r.error
-  return { config, item, members, signatures: sigs.data, versions: versions.data, audit: audit.data }
+  for (const r of [sigs, versions, audit, links]) if (r.error) throw r.error
+  return {
+    config,
+    item,
+    members,
+    signatures: sigs.data,
+    versions: versions.data,
+    audit: audit.data,
+    links: links.data,
+    linkTypes,
+  }
 }
 
 export default function ItemPage() {
@@ -70,7 +81,7 @@ export default function ItemPage() {
   if (!data) return <p className="muted">Loading item…</p>
   if (data.missing) return <p>Item {itemKey} not found.</p>
 
-  const { config, item, members, signatures, versions, audit } = data
+  const { config, item, members, signatures, versions, audit, links, linkTypes } = data
   const state = stateById[item.state_id]
   const base = `/projects/${project.id}/trackers/${typeKey}`
 
@@ -247,8 +258,21 @@ export default function ItemPage() {
               </div>
             )}
           </dl>
-          <p className="muted small links-note">Links to other items (for example TC verifies SRS) come next.</p>
         </section>
+      )}
+
+      {tab === 'details' && (
+        <Links
+          project={project}
+          item={item}
+          links={links}
+          linkTypes={linkTypes.filter((t) => !t.is_retired && (t.source_type_key === typeKey || t.target_type_key === typeKey))}
+          outgoingTypes={linkTypes.filter((t) => !t.is_retired && t.source_type_key === typeKey)}
+          canChange={can('items.edit') && !state.locks_item}
+          locked={state.locks_item}
+          requireReason={signatures.length > 0}
+          onChanged={reload}
+        />
       )}
 
       {tab === 'signatures' && (
@@ -301,6 +325,16 @@ export default function ItemPage() {
                       </dd>
                     </div>
                   ))}
+                {v.links?.length > 0 && (
+                  <div className="details-row">
+                    <dt>Links</dt>
+                    <dd>
+                      {v.links
+                        .map((l) => `${linkTypes.find((t) => t.key === l.type)?.label ?? l.type} ${l.target}`)
+                        .join(', ')}
+                    </dd>
+                  </div>
+                )}
               </dl>
             </details>
           ))}
@@ -452,6 +486,8 @@ function History({ audit, signatures, config, members, stateById }) {
         changes,
       }
     }
+    const link = e.reason?.match(/^(Link (?:added|removed): [^:]+)/)
+    if (f.includes('version') && link && changes.length === 0) return { what: `${link[1]} (version ${e.new_values.version})`, changes }
     if (f.includes('version')) return { what: `Edited (version ${e.new_values.version})`, changes }
     return { what: 'Updated', changes }
   }
@@ -495,7 +531,7 @@ function History({ audit, signatures, config, members, stateById }) {
               )
             }
             const d = describe(e)
-            const reason = e.reason?.replace(/^Moved from .+? to .+?(: |$)/, '') || ''
+            const reason = e.reason?.replace(/^Moved from .+? to .+?(: |$)/, '').replace(/^Link (added|removed): [^:]+(: |$)/, '') || ''
             return (
               <tr key={e.id}>
                 <td className="nowrap small">{formatTimestamp(e.occurred_at)}</td>
@@ -521,5 +557,199 @@ function History({ audit, signatures, config, members, stateById }) {
         </tbody>
       </table>
     </div>
+  )
+}
+
+// Links to and from this item (SRS-019). Links belong to the item they start from,
+// so only those can be added or removed here, and only while this item is editable.
+function Links({ project, item, links, linkTypes, outgoingTypes, canChange, locked, requireReason, onChanged }) {
+  const [adding, setAdding] = useState(false)
+  const [removing, setRemoving] = useState(null)
+  const groups = {}
+  for (const l of links) (groups[`${l.direction}:${l.label}`] ??= { label: l.label, direction: l.direction, links: [] }).links.push(l)
+  const sorted = Object.values(groups).sort((a, b) => (a.direction === b.direction ? 0 : a.direction === 'out' ? -1 : 1))
+
+  if (linkTypes.length === 0) return null
+
+  return (
+    <section className="card stack-sm" aria-label="Links">
+      <div className="card-head">
+        <h3>Links</h3>
+        {canChange && outgoingTypes.length > 0 && !adding && (
+          <button type="button" className="secondary small" onClick={() => setAdding(true)}>
+            Add link
+          </button>
+        )}
+      </div>
+      {sorted.length === 0 && <p className="muted small">No links yet.</p>}
+      {sorted.map((g) => (
+        <div key={`${g.direction}:${g.label}`}>
+          <h4 className="small muted link-group">
+            {item.item_key} {g.label}
+          </h4>
+          <ul className="link-list">
+            {g.links.map((l) => (
+              <li key={l.link_id} className="link-row">
+                <span>
+                  <Link to={`/projects/${project.id}/trackers/${l.other_type_key}/${l.other_item_key}`} className="prefix">
+                    {l.other_item_key}
+                  </Link>{' '}
+                  {l.other_title} <span className="muted small">· {l.other_state}</span>
+                </span>
+                {l.direction === 'out' && canChange && removing?.link_id !== l.link_id && (
+                  <button type="button" className="secondary small" onClick={() => setRemoving(l)}>
+                    Remove
+                  </button>
+                )}
+                {removing?.link_id === l.link_id && (
+                  <LinkChange
+                    title={`Remove link: ${item.item_key} ${l.label} ${l.other_item_key}?`}
+                    submitLabel="Remove link"
+                    requireReason={requireReason}
+                    onCancel={() => setRemoving(null)}
+                    onSubmit={(reason) => supabase.rpc('remove_item_link', { p_link: l.link_id, p_reason: reason })}
+                    onDone={() => {
+                      setRemoving(null)
+                      onChanged()
+                    }}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {adding && (
+        <AddLink
+          project={project}
+          item={item}
+          types={outgoingTypes}
+          existing={links.filter((l) => l.direction === 'out')}
+          requireReason={requireReason}
+          onCancel={() => setAdding(false)}
+          onDone={() => {
+            setAdding(false)
+            onChanged()
+          }}
+        />
+      )}
+      {outgoingTypes.length > 0 && (
+        <p className="muted small">
+          {locked
+            ? `${item.item_key} is locked, so its links can't change. Move it back to an editable state first.`
+            : `Adding or removing a link creates a new version of ${item.item_key}.`}
+        </p>
+      )}
+    </section>
+  )
+}
+
+function AddLink({ project, item, types, existing, requireReason, onCancel, onDone }) {
+  const [typeKey, setTypeKey] = useState(types[0].key)
+  const [targets, setTargets] = useState(null)
+  const [target, setTarget] = useState('')
+  const type = types.find((t) => t.key === typeKey)
+
+  useEffect(() => {
+    let current = true
+    supabase
+      .from('items')
+      .select('item_key, title, number')
+      .eq('project_id', project.id)
+      .like('item_key', `${type.target_type_key}-%`)
+      .order('number')
+      .then(({ data }) => current && setTargets(data ?? []))
+    return () => {
+      current = false
+    }
+  }, [project.id, type.target_type_key])
+
+  const taken = new Set(existing.filter((l) => l.link_type === typeKey).map((l) => l.other_item_key))
+  const options = (targets ?? []).filter((t) => !taken.has(t.item_key) && t.item_key !== item.item_key)
+
+  return (
+    <LinkChange
+      title={`Add a link from ${item.item_key}`}
+      submitLabel="Add link"
+      requireReason={requireReason}
+      canSubmit={Boolean(target)}
+      onCancel={onCancel}
+      onSubmit={(reason) =>
+        supabase.rpc('add_item_link', { p_item: item.id, p_link_type: typeKey, p_target: target, p_reason: reason })
+      }
+      onDone={onDone}
+    >
+      <div className="form-row">
+        <label>
+          Link type
+          <select
+            value={typeKey}
+            onChange={(e) => {
+              setTypeKey(e.target.value)
+              setTarget('')
+              setTargets(null)
+            }}
+          >
+            {types.map((t) => (
+              <option key={t.key} value={t.key}>
+                {item.item_key} {t.label} {t.target_type_key}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {type.target_type_key} item
+          <select value={target} onChange={(e) => setTarget(e.target.value)} disabled={!targets}>
+            <option value="">{targets ? (options.length ? 'Choose…' : `No ${type.target_type_key} items to link`) : 'Loading…'}</option>
+            {options.map((t) => (
+              <option key={t.item_key} value={t.item_key}>
+                {t.item_key} {t.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </LinkChange>
+  )
+}
+
+// Confirm a link change, with a reason (required once the item has been reviewed).
+function LinkChange({ title, submitLabel, requireReason, canSubmit = true, onSubmit, onCancel, onDone, children }) {
+  const [reason, setReason] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    const { error } = await onSubmit(reason.trim() || null)
+    setSaving(false)
+    if (error) setError(error.message)
+    else onDone()
+  }
+
+  return (
+    <form className="form-inline link-form" onSubmit={handleSubmit}>
+      <h4>{title}</h4>
+      {children}
+      <label>
+        Reason{requireReason ? ' (required: this item has been reviewed before)' : ' (optional)'}
+        <input value={reason} onChange={(e) => setReason(e.target.value)} required={requireReason} maxLength={500} />
+      </label>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="actions">
+        <button type="submit" className="small" disabled={saving || !canSubmit || (requireReason && !reason.trim())}>
+          {saving ? 'Saving…' : submitLabel}
+        </button>
+        <button type="button" className="secondary small" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
   )
 }

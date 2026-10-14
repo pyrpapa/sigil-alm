@@ -93,6 +93,11 @@ export default function TrackerPage() {
               Configure
             </Link>
           )}
+          {can('items.create') && (
+            <Link className="button secondary-link" to={`${base}/import`}>
+              Import CSV
+            </Link>
+          )}
           {can('items.create') && !creating && (
             <button type="button" onClick={() => setCreating(true)}>
               New {config.tracker.type_key} item

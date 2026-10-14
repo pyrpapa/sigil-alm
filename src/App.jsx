@@ -13,6 +13,7 @@ import ProjectRepository from './pages/project/ProjectRepository'
 import TrackerPage from './pages/tracker/TrackerPage'
 import TrackerConfig from './pages/tracker/TrackerConfig'
 import ItemPage from './pages/tracker/ItemPage'
+import ImportPage from './pages/tracker/ImportPage'
 import PreviewRuns from './preview/PreviewRuns'
 import RunView from './preview/RunView'
 
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="trackers" element={<ProjectTrackers />} />
             <Route path="trackers/:typeKey" element={<TrackerPage />} />
             <Route path="trackers/:typeKey/config" element={<TrackerConfig />} />
+            <Route path="trackers/:typeKey/import" element={<ImportPage />} />
             <Route path="trackers/:typeKey/:itemKey" element={<ItemPage />} />
             {/* Test execution preview on sample data until Phase 3 */}
             <Route path="preview" element={<PreviewRuns />} />

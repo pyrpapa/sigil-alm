@@ -1001,8 +1001,55 @@ a.button.secondary-link {
   padding-top: 0.75rem;
 }
 
-.links-note {
-  margin: 1rem 0 0;
+/* Item links (SRS-019) */
+.link-group {
+  margin: 0.25rem 0 0.35rem;
+}
+
+.link-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.link-row > span {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.link-row > button {
+  flex: none;
+}
+
+.link-form {
+  flex-basis: 100%;
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+  margin: 0.25rem 0 0;
+}
+
+/* CSV import (SRS-047) */
+.stack-sm > p {
+  margin: 0;
+}
+
+.column-map {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.9rem;
+}
+
+.column-map li.ignored {
+  color: var(--muted);
+}
+
+tr.row-error td {
+  background: var(--bad-bg);
 }
 
 details.version summary {

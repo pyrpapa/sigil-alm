@@ -43,7 +43,8 @@ System prevents saving a tracker item while a required field is empty.",Test (au
 SRS-017,Trackers,Folders,"User is able to create a folder in a tracker
 User is able to drag tracker items to be nested in a folder",Test (automated),Organization of large trackers.,Draft
 SRS-018,Trackers,Filtering,"User is able to filter tracker items by state, folder and field values.",Test (automated),Users need to find items quickly.,Draft
-SRS-019,Trackers,Item links,System allows links between different tracker items (e.g. TC verifies SRS) and displays each link on both linked items.,Test (automated),Links are the basis of traceability.,Draft
+SRS-019,Trackers,Item links,"System allows links between tracker items of the link types configured for the project (e.g. TC verifies SRS, RISK is mitigated by SRS, SDS implements SRS) and displays each link on both linked items
+A link belongs to the item it starts from: adding or removing a link creates a new version of that item and is not allowed while that item is locked",Test (automated),Links are the basis of traceability.,Draft
 SRS-020,Trackers,Item versioning,"System creates a new version of an item each time its content changes
 User is able to view past versions of a tracker item",Test (automated),Approvals and test runs refer to specific versions.,Draft
 SRS-021,Workflow,Defined transitions only,System enforces state transitions for a tracker item in accordance with the tracker's transition configuration,Test (automated),Enforces the review process.,Draft

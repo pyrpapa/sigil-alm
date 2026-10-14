@@ -30,6 +30,12 @@ export async function loadTracker(projectId, typeKey) {
   }
 }
 
+export async function loadLinkTypes(projectId) {
+  const { data, error } = await supabase.from('link_types').select('*').eq('project_id', projectId).order('key')
+  if (error) throw error
+  return data
+}
+
 export async function loadMembers(projectId) {
   const { data, error } = await supabase.rpc('project_member_list', { p_project: projectId })
   if (error) throw error
