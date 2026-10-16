@@ -9,6 +9,7 @@ export default function Layout({ session }) {
           Sigil
         </Link>
         <div className="topbar-right">
+          <Link to="/reviews">My reviews</Link>
           <span className="muted">{session.user.email}</span>
           <button type="button" className="secondary" onClick={() => supabase.auth.signOut()}>
             Sign out

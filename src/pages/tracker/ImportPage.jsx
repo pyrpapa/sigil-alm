@@ -1,0 +1,243 @@
+import { useEffect, useState } from 'react'
+import { Link, useOutletContext, useParams } from 'react-router-dom'
+import { supabase } from '../../lib/supabase'
+import { loadLinkTypes, loadMembers, loadTracker } from '../../lib/trackers'
+import { prepareImport } from '../../lib/csvImport'
+
+// Import items from CSV (SRS-047): choose a file, check the preview, then import.
+// The preview is the database's own check, so what it shows is exactly what the
+// import will do; nothing is created until every row is valid.
+export default function ImportPage() {
+  const { project, can } = useOutletContext()
+  const { typeKey } = useParams()
+  const [setup, setSetup] = useState(null)
+  const [error, setError] = useState('')
+  const [file, setFile] = useState(null) // { name, columns, rows }
+  const [preview, setPreview] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(null)
+
+  useEffect(() => {
+    let current = true
+    Promise.all([loadTracker(project.id, typeKey), loadLinkTypes(project.id), loadMembers(project.id)]).then(
+      ([config, linkTypes, members]) => current && setSetup({ config, linkTypes, members }),
+      (e) => current && setError(e.message),
+    )
+    return () => {
+      current = false
+    }
+  }, [project.id, typeKey])
+
+  if (error && !setup)
+    return (
+      <p className="error" role="alert">
+        {error}
+      </p>
+    )
+  if (!setup) return <p className="muted">Loading tracker…</p>
+  if (!setup.config) return <p>No tracker called {typeKey} in this project.</p>
+
+  const { config } = setup
+  const base = `/projects/${project.id}/trackers/${typeKey}`
+
+  async function runImport(rows, commit, name) {
+    const { data, error } = await supabase.rpc('import_items', {
+      p_tracker: config.tracker.id,
+      p_rows: rows.map((r) => ({ id: r.id, title: r.title, folder: r.folder, release: r.release, values: r.values, links: r.links })),
+      p_commit: commit,
+      p_source: name,
+    })
+    if (error) throw error
+    return data
+  }
+
+  async function handleFile(e) {
+    const chosen = e.target.files?.[0]
+    e.target.value = ''
+    if (!chosen) return
+    setError('')
+    setPreview(null)
+    setDone(null)
+    const prepared = prepareImport(await chosen.text(), config, setup.linkTypes, setup.members)
+    setFile({ name: chosen.name, ...prepared })
+    if (prepared.error) return
+    setBusy(true)
+    try {
+      setPreview(await runImport(prepared.rows, false, chosen.name))
+    } catch (err) {
+      setError(err.message)
+    }
+    setBusy(false)
+  }
+
+  async function handleImport() {
+    setBusy(true)
+    setError('')
+    try {
+      const result = await runImport(file.rows, true, file.name)
+      if (result.committed) setDone(result)
+      else setPreview(result)
+    } catch (err) {
+      setError(err.message)
+    }
+    setBusy(false)
+  }
+
+  const results = preview?.rows ?? []
+  const autoKeys = new Set(config.actions.map((a) => a.field_key))
+  const importable = config.fields.filter((f) => !f.is_retired && f.field_type !== 'steps' && !autoKeys.has(f.key))
+  const outgoing = setup.linkTypes.filter((t) => t.source_type_key === typeKey && !t.is_retired)
+  // Every row refused only because its ID is taken: the tracker already has items.
+  const alreadyHasItems =
+    results.length > 0 && results.every((r, i) => r.errors.length === 1 && file.rows[i].id && r.errors[0].startsWith('The file says'))
+  const folderCount = new Set((file?.rows ?? []).map((r) => r.folder).filter(Boolean)).size
+
+  return (
+    <div className="stack">
+      <nav className="breadcrumb" aria-label="Import breadcrumb">
+        <Link to={`/projects/${project.id}/trackers`}>Trackers</Link> <span aria-hidden="true">/</span>{' '}
+        <Link to={base}>{typeKey}</Link> <span aria-hidden="true">/</span> <span>Import</span>
+      </nav>
+      <h2>
+        Import <span className="prefix">{typeKey}</span> items from CSV
+      </h2>
+
+      {!can('items.create') ? (
+        <p className="notice">Your role cannot create items in this project.</p>
+      ) : done ? (
+        <section className="card review-status done" role="status">
+          <strong>Imported {done.rows.length} items</strong> from {file.name}: {done.rows[0].item_key} to{' '}
+          {done.rows[done.rows.length - 1].item_key}. They start in New. <Link to={base}>Go to the {typeKey} tracker</Link>
+        </section>
+      ) : (
+        <section className="card stack-sm">
+          <p className="small">
+            The first row names the columns: <code>title</code> (required), this tracker's fields by key or label (
+            {importable.map((f) => f.key).join(', ')}), and optionally <code>id</code>, <code>folder</code>
+            {typeKey !== 'REL' && (
+              <>
+                , <code>release</code>
+              </>
+            )}
+            {outgoing.length > 0 && (
+              <>
+                , and link columns ({outgoing.map((t) => `${t.key} or linked_${t.target_type_key.toLowerCase()}`).join(', ')}, IDs
+                separated by <code>;</code>)
+              </>
+            )}
+            . If the file has an <code>id</code> column, each ID must match the one Sigil assigns, so import into an empty
+            tracker with rows in ID order.
+          </p>
+          <label className="file-label">
+            Choose a CSV file
+            <input type="file" accept=".csv,text/csv" onChange={handleFile} disabled={busy} />
+          </label>
+        </section>
+      )}
+
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      {file?.error && (
+        <p className="error" role="alert">
+          {file.name}: {file.error}
+        </p>
+      )}
+
+      {file?.columns && !done && (
+        <section className="card">
+          <h3>Columns in {file.name}</h3>
+          <ul className="column-map">
+            {file.columns.map((c, i) => (
+              <li key={i} className={c.kind === 'ignore' ? 'ignored' : ''}>
+                <code>{c.header || '(blank)'}</code> →{' '}
+                {c.kind === 'field' ? c.field.label : c.kind === 'link' ? `Link (${c.linkType.label})` : c.kind === 'ignore' ? 'Not imported' : c.label ?? c.kind[0].toUpperCase() + c.kind.slice(1)}
+                {c.note && <span className="muted small"> · {c.note}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {busy && <p className="muted">Checking rows…</p>}
+
+      {preview && !done && (
+        <>
+          <div className={`review-status ${preview.error_count ? 'pending' : 'done'}`} role="status">
+            {alreadyHasItems ? (
+              <>
+                <strong>
+                  {typeKey} already has items, so the IDs in this file would not match ({file.rows[0].id} would become{' '}
+                  {results[0].item_key}).
+                </strong>{' '}
+                Was this file imported already? Nothing has been created.
+              </>
+            ) : preview.error_count ? (
+              <>
+                <strong>
+                  {preview.error_count} of {results.length} rows have problems.
+                </strong>{' '}
+                Nothing has been created. Fix the file and choose it again.
+              </>
+            ) : (
+              <>
+                <strong>All {results.length} rows are valid.</strong> Importing creates {results[0]?.item_key} to{' '}
+                {results[results.length - 1]?.item_key}
+                {folderCount > 0 && ` in ${folderCount} folders`}.
+              </>
+            )}
+          </div>
+
+          {!preview.error_count && (
+            <div className="actions">
+              <button type="button" onClick={handleImport} disabled={busy}>
+                {busy ? 'Importing…' : `Import ${results.length} items`}
+              </button>
+            </div>
+          )}
+
+          <div className="table-wrap">
+            <table aria-label="Import preview">
+              <thead>
+                <tr>
+                  <th>Line</th>
+                  <th>Will be</th>
+                  <th>Title</th>
+                  <th>Folder</th>
+                  <th>Links</th>
+                  <th>Check</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((r, i) => {
+                  const row = file.rows[i]
+                  return (
+                    <tr key={r.row} className={r.errors.length ? 'row-error' : ''}>
+                      <td className="muted">{row.line}</td>
+                      <td className="nowrap">
+                        <span className="prefix">{r.item_key}</span>
+                        {row.id && row.id.toUpperCase() !== r.item_key && <div className="small muted">file: {row.id}</div>}
+                      </td>
+                      <td>{row.title || <span className="muted">(none)</span>}</td>
+                      <td>{row.folder}</td>
+                      <td className="small">{row.links.map((l) => l.target).join(', ')}</td>
+                      <td>
+                        {r.errors.length ? (
+                          <span className="error small">{r.errors.join('; ')}</span>
+                        ) : (
+                          <span className="badge badge-good">OK</span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

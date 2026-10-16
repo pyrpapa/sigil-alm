@@ -305,7 +305,8 @@ function WorkflowConfig({ config, run }) {
         <h3>States</h3>
         <p className="muted small">
           Items start in New. A review gate means items entering that state wait for a signature from the chosen role before moving on to a
-          locked or review state, and can't be edited while they wait. Locked states can't be edited until moved back.
+          locked or review state, and can't be edited while they wait. Locked states can't be edited until moved back. A final state is
+          where a version ends up approved: nothing moves out of it, and changes need a new version.
         </p>
         <div className="table-wrap">
           <table aria-label="States">
@@ -315,6 +316,7 @@ function WorkflowConfig({ config, run }) {
                 <th>Name</th>
                 <th>Review gate</th>
                 <th>Locks items</th>
+                <th>Final</th>
                 <th>Status</th>
               </tr>
             </thead>
@@ -346,7 +348,12 @@ function WorkflowConfig({ config, run }) {
                 <tr key={from.id}>
                   <th scope="row">{from.name}</th>
                   {active.map((to) => {
-                    if (from.id === to.id) return <td key={to.id} className="muted">—</td>
+                    if (from.id === to.id || from.is_final)
+                      return (
+                        <td key={to.id} className="muted" title={from.is_final ? 'Nothing moves out of a final state' : undefined}>
+                          —
+                        </td>
+                      )
                     const m = moveOf(from, to)
                     return (
                       <td key={to.id}>
@@ -454,9 +461,19 @@ function StateRow({ state, prev, next, run }) {
           type="checkbox"
           aria-label={`${state.name} locks items`}
           checked={state.locks_item}
-          disabled={state.is_initial || Boolean(state.review_role)}
-          title={state.review_role ? 'Review states always lock items' : undefined}
+          disabled={state.is_initial || Boolean(state.review_role) || state.is_final}
+          title={state.review_role ? 'Review states always lock items' : state.is_final ? 'Final states always lock items' : undefined}
           onChange={(e) => update({ locks_item: e.target.checked })}
+        />
+      </td>
+      <td>
+        <input
+          type="checkbox"
+          aria-label={`${state.name} is final`}
+          checked={state.is_final}
+          disabled={state.is_initial || Boolean(state.review_role)}
+          title="A version in a final state is approved and never changes"
+          onChange={(e) => update({ is_final: e.target.checked })}
         />
       </td>
       <td>

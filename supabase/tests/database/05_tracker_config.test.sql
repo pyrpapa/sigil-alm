@@ -33,15 +33,16 @@ select ok(
 -- Defaults -----------------------------------------------------------------------
 select results_eq(
   $$ select type_key from trackers where project_id = current_setting('test.project_id')::uuid order by position $$,
-  $$ values ('SRS'), ('SDS'), ('RISK'), ('TC'), ('TR'), ('DEV') $$,
-  'A new project gets the six default trackers (SRS-013)');
+  $$ values ('SRS'), ('SDS'), ('RISK'), ('TC'), ('TR'), ('DEV'), ('REL') $$,
+  'A new project gets the default trackers, including releases (SRS-013)');
 
 select results_eq(
   $$ select name, is_initial, review_role::text, locks_item from tracker_states
      where tracker_id = current_setting('test.srs')::uuid order by position $$,
   $$ values ('New', true, null::text, false), ('In Progress', false, null, false),
-            ('In Review', false, 'qa', true), ('Approved', false, null, true) $$,
-  'The default SRS workflow starts at New and has a QA review gate (SRS-015, SRS-022)');
+            ('Ready for Review', false, null, true), ('Val Review', false, 'specialist', true),
+            ('QA Review', false, 'qa', true), ('Needs Work', false, null, false), ('Approved', false, null, true) $$,
+  'The default SRS workflow: Ready for Review, then Val and QA review gates, with Needs Work (SRS-015, SRS-022)');
 
 -- Admin changes configuration --------------------------------------------------------
 select lives_ok(
@@ -98,7 +99,7 @@ select lives_ok(
 
 select throws_ok(
   $$ insert into tracker_state_actions (tracker_id, state_id, on_event, field_key, action)
-     select current_setting('test.srs')::uuid, id, 'entry', 'requirement', 'set_today'
+     select current_setting('test.srs')::uuid, id, 'entry', 'rationale', 'set_today'
      from tracker_states where tracker_id = current_setting('test.srs')::uuid and name = 'Approved' $$,
   '23514', null,
   'Today''s date can only be set on a date or text field');
@@ -138,7 +139,7 @@ reset role;
 -- Visibility -----------------------------------------------------------------------
 select set_config('request.jwt.claims', '{"sub": "c3333333-3333-4333-8333-333333333333", "role": "authenticated"}', true);
 set local role authenticated;
-select is((select count(*)::int from trackers), 6, 'A Viewer can see the project''s trackers');
+select is((select count(*)::int from trackers), 7, 'A Viewer can see the project''s trackers');
 reset role;
 
 select set_config('request.jwt.claims', '{"sub": "d4444444-4444-4444-8444-444444444444", "role": "authenticated"}', true);

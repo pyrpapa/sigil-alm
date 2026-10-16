@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Projects from './pages/Projects'
+import ReviewQueue from './pages/ReviewQueue'
 import ProjectLayout from './pages/project/ProjectLayout'
 import ProjectOverview from './pages/project/ProjectOverview'
 import ProjectMembers from './pages/project/ProjectMembers'
@@ -13,6 +14,7 @@ import ProjectRepository from './pages/project/ProjectRepository'
 import TrackerPage from './pages/tracker/TrackerPage'
 import TrackerConfig from './pages/tracker/TrackerConfig'
 import ItemPage from './pages/tracker/ItemPage'
+import ImportPage from './pages/tracker/ImportPage'
 import PreviewRuns from './preview/PreviewRuns'
 import RunView from './preview/RunView'
 
@@ -38,11 +40,13 @@ export default function App() {
         {/* Everything inside this route requires a signed-in user */}
         <Route element={session ? <Layout session={session} /> : <Navigate to="/login" replace />}>
           <Route path="/" element={<Projects />} />
+          <Route path="/reviews" element={<ReviewQueue />} />
           <Route path="/projects/:projectId" element={<ProjectLayout session={session} />}>
             <Route index element={<ProjectOverview />} />
             <Route path="trackers" element={<ProjectTrackers />} />
             <Route path="trackers/:typeKey" element={<TrackerPage />} />
             <Route path="trackers/:typeKey/config" element={<TrackerConfig />} />
+            <Route path="trackers/:typeKey/import" element={<ImportPage />} />
             <Route path="trackers/:typeKey/:itemKey" element={<ItemPage />} />
             {/* Test execution preview on sample data until Phase 3 */}
             <Route path="preview" element={<PreviewRuns />} />

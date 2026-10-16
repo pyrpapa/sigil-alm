@@ -1,5 +1,6 @@
 // Input for one tracker field, chosen by the field's configured type (SRS-016).
-export default function FieldInput({ field, value, onChange, members = [] }) {
+// context: { itemKey, usedNumbers } for ER lists; { ers, currentEr } for test steps.
+export default function FieldInput({ field, value, onChange, members = [], context = {} }) {
   const id = `field-${field.key}`
   const label = (
     <span>
@@ -14,7 +15,22 @@ export default function FieldInput({ field, value, onChange, members = [] }) {
       <fieldset className="steps-editor">
         <legend>{label}</legend>
         {help}
-        <StepsEditor steps={Array.isArray(value) ? value : []} onChange={onChange} />
+        <StepsEditor steps={Array.isArray(value) ? value : []} onChange={onChange} ers={context.ers ?? []} currentEr={context.currentEr ?? {}} />
+      </fieldset>
+    )
+  }
+
+  if (field.field_type === 'statements') {
+    return (
+      <fieldset className="steps-editor">
+        <legend>{label}</legend>
+        {help}
+        <StatementsEditor
+          statements={Array.isArray(value) ? value : []}
+          onChange={onChange}
+          itemKey={context.itemKey}
+          usedNumbers={context.usedNumbers ?? []}
+        />
       </fieldset>
     )
   }
@@ -75,7 +91,55 @@ export default function FieldInput({ field, value, onChange, members = [] }) {
 // Two kinds of step (SRS-034, SRS-049):
 //   verification  { action, expected }                  pass/fail against the expected result
 //   documentation { kind: 'document', action, fields }  the tester records each named value
-function StepsEditor({ steps, onChange }) {
+// ERs (requirement statements). Numbers are permanent: a new ER always takes the
+// next number above any the item has used, in any version.
+function StatementsEditor({ statements, onChange, itemKey, usedNumbers }) {
+  const nextNumber = Math.max(0, ...usedNumbers, ...statements.map((s) => s.n)) + 1
+  const update = (i, text) => onChange(statements.map((s, j) => (j === i ? { ...s, text } : s)))
+  const move = (i, delta) => {
+    const next = [...statements]
+    const [s] = next.splice(i, 1)
+    next.splice(i + delta, 0, s)
+    onChange(next)
+  }
+  return (
+    <div className="stack-sm">
+      {statements.map((s, i) => (
+        <div key={s.n} className="er-row">
+          <span className="er-key">{itemKey ? `${itemKey}.${s.n}` : `ER ${s.n}`}</span>
+          <textarea aria-label={`ER ${s.n}`} rows={2} value={s.text} onChange={(e) => update(i, e.target.value)} />
+          <div className="step-tools">
+            <button type="button" className="secondary small" disabled={i === 0} onClick={() => move(i, -1)} aria-label={`Move ER ${s.n} up`}>
+              ↑
+            </button>
+            <button
+              type="button"
+              className="secondary small"
+              disabled={i === statements.length - 1}
+              onClick={() => move(i, 1)}
+              aria-label={`Move ER ${s.n} down`}
+            >
+              ↓
+            </button>
+            <button type="button" className="secondary small" onClick={() => onChange(statements.filter((_, j) => j !== i))} aria-label={`Remove ER ${s.n}`}>
+              ✕
+            </button>
+          </div>
+        </div>
+      ))}
+      <div className="actions">
+        <button type="button" className="secondary small" onClick={() => onChange([...statements, { n: nextNumber, text: '' }])}>
+          Add ER
+        </button>
+      </div>
+      {usedNumbers.some((n) => !statements.some((s) => s.n === n)) && (
+        <p className="muted small">Removed ERs keep their numbers; they are never reused.</p>
+      )}
+    </div>
+  )
+}
+
+function StepsEditor({ steps, onChange, ers, currentEr }) {
   const update = (i, patch) => onChange(steps.map((s, j) => (j === i ? { ...s, ...patch } : s)))
   const move = (i, delta) => {
     const next = [...steps]
@@ -149,6 +213,9 @@ function StepsEditor({ steps, onChange }) {
                 ✕
               </button>
             </div>
+            {ers.length > 0 && (
+              <ErPicker step={s} ers={ers} currentText={currentEr[s.er]} onChange={(patch) => update(i, patch)} n={i + 1} />
+            )}
           </div>
         )
       })}
@@ -160,6 +227,47 @@ function StepsEditor({ steps, onChange }) {
           Add documentation step
         </button>
       </div>
+    </div>
+  )
+}
+
+// Which ER a step verifies, and whether the ER has been reworded since the step was written.
+function ErPicker({ step, ers, currentText, onChange, n }) {
+  const stale = step.er && step.er_text && currentText !== undefined && step.er_text !== currentText && !step.er_confirm
+  const missing = step.er && currentText === undefined
+  return (
+    <div className="er-picker">
+      <label>
+        Verifies ER
+        <select
+          aria-label={`ER verified by step ${n}`}
+          value={step.er ?? ''}
+          onChange={(e) => onChange({ er: e.target.value || undefined, er_text: undefined, er_confirm: undefined })}
+        >
+          <option value="">None (setup step)</option>
+          {ers.map((er) => (
+            <option key={er.key} value={er.key}>
+              {er.key}: {er.text.length > 70 ? `${er.text.slice(0, 70)}…` : er.text}
+            </option>
+          ))}
+        </select>
+      </label>
+      {missing && <p className="error small">{step.er} is no longer in the requirement. Choose another ER.</p>}
+      {stale && (
+        <div className="er-stale small">
+          <strong>{step.er} was reworded</strong> since this step was written.
+          <div>
+            Was: <del>{step.er_text}</del>
+          </div>
+          <div>
+            Now: <ins>{currentText}</ins>
+          </div>
+          <button type="button" className="secondary small" onClick={() => onChange({ er_confirm: true })}>
+            Step still fits the new wording
+          </button>
+        </div>
+      )}
+      {step.er_confirm && <p className="muted small">Will be marked as checked against the new wording when you save.</p>}
     </div>
   )
 }
