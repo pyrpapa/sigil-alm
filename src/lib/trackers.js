@@ -4,7 +4,7 @@ import { supabase } from './supabase'
 export async function loadTracker(projectId, typeKey) {
   const { data: tracker, error } = await supabase
     .from('trackers')
-    .select('id, project_id, type_key, name, description, next_number')
+    .select('id, project_id, type_key, name, description, next_number, pair_tracker_id, is_pair_primary')
     .eq('project_id', projectId)
     .eq('type_key', typeKey)
     .maybeSingle()
@@ -36,6 +36,29 @@ export async function loadLinkTypes(projectId) {
   return data
 }
 
+// The project's releases (items of the REL tracker), each marked complete or not.
+export async function loadReleases(projectId) {
+  const { data: tracker, error } = await supabase
+    .from('trackers')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('type_key', 'REL')
+    .maybeSingle()
+  if (error) throw error
+  if (!tracker) return []
+  const [items, states] = await Promise.all([
+    supabase.from('item_heads').select('id, item_key, title, state_id, number').eq('tracker_id', tracker.id).order('number'),
+    supabase.from('tracker_states').select('id, name, is_final').eq('tracker_id', tracker.id),
+  ])
+  for (const r of [items, states]) if (r.error) throw r.error
+  return items.data.map((i) => {
+    const s = states.data.find((x) => x.id === i.state_id)
+    return { id: i.id, item_key: i.item_key, title: i.title, state: s?.name, complete: Boolean(s?.is_final) }
+  })
+}
+
+export const releaseLabel = (r) => (r ? `${r.item_key} ${r.title}` : '')
+
 export async function loadMembers(projectId) {
   const { data, error } = await supabase.rpc('project_member_list', { p_project: projectId })
   if (error) throw error
@@ -58,12 +81,28 @@ export function fieldKeyFromLabel(label) {
 }
 
 // Tidies test steps before saving: trims text and drops blank "values to record" rows.
+// The ER a step verifies goes with it; the database records the ER's wording itself.
 export function cleanSteps(steps) {
-  return steps.map((s) =>
-    s.kind === 'document'
-      ? { kind: 'document', action: (s.action ?? '').trim(), fields: (s.fields ?? []).map((f) => f.trim()).filter(Boolean) }
-      : { action: (s.action ?? '').trim(), expected: (s.expected ?? '').trim() },
-  )
+  return steps.map((s) => {
+    const er = s.er ? { er: s.er, ...(s.er_confirm ? { er_confirm: true } : {}) } : {}
+    return s.kind === 'document'
+      ? { kind: 'document', action: (s.action ?? '').trim(), fields: (s.fields ?? []).map((f) => f.trim()).filter(Boolean), ...er }
+      : { action: (s.action ?? '').trim(), expected: (s.expected ?? '').trim(), ...er }
+  })
+}
+
+// ERs of the given items' latest versions, as { key: 'SRS-011.3', text }.
+export async function loadErs(itemIds) {
+  if (itemIds.length === 0) return []
+  const [heads, fields] = await Promise.all([
+    supabase.from('item_heads').select('id, item_key, tracker_id, values, number').in('id', itemIds).order('number'),
+    supabase.from('tracker_fields').select('tracker_id, key').eq('field_type', 'statements').eq('is_retired', false),
+  ])
+  for (const r of [heads, fields]) if (r.error) throw r.error
+  return heads.data.flatMap((h) => {
+    const f = fields.data.find((x) => x.tracker_id === h.tracker_id)
+    return (f ? (h.values[f.key] ?? []) : []).map((s) => ({ key: `${h.item_key}.${s.n}`, text: s.text }))
+  })
 }
 
 // What is still missing from a list of steps, as short messages (empty when complete).

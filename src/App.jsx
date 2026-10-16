@@ -4,6 +4,7 @@ import { supabase } from './lib/supabase'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Projects from './pages/Projects'
+import ReviewQueue from './pages/ReviewQueue'
 import ProjectLayout from './pages/project/ProjectLayout'
 import ProjectOverview from './pages/project/ProjectOverview'
 import ProjectMembers from './pages/project/ProjectMembers'
@@ -39,6 +40,7 @@ export default function App() {
         {/* Everything inside this route requires a signed-in user */}
         <Route element={session ? <Layout session={session} /> : <Navigate to="/login" replace />}>
           <Route path="/" element={<Projects />} />
+          <Route path="/reviews" element={<ReviewQueue />} />
           <Route path="/projects/:projectId" element={<ProjectLayout session={session} />}>
             <Route index element={<ProjectOverview />} />
             <Route path="trackers" element={<ProjectTrackers />} />

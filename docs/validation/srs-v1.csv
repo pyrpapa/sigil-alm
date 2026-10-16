@@ -35,7 +35,8 @@ SRS-013,Trackers,Default trackers,"When a project is created, System automatical
 - RISK
 - TC
 - TR
-- DEV",Test (automated),Every validation project starts with the same core structure.,Draft
+- DEV
+- REL",Test (automated),Every validation project starts with the same core structure.,Draft
 SRS-014,Trackers,Unique item IDs,System assigns each item an ID made of its tracker prefix and a sequence number (e.g. SRS-004) that is unique within the project and never reused.,Test (automated),IDs are cited in documents and test code; reuse would break traceability.,Draft
 SRS-015,Trackers,Configuration as data,"System stores each tracker's field definitions, workflow states, transitions and link types as data, seeded with defaults for each tracker type.",Inspection,Allows configuration to change without code changes (editing screens planned for v1.5).,Draft
 SRS-016,Trackers,Generated item forms,"When a tracker item is created, System generates item form from the tracker's field definitions
@@ -90,3 +91,36 @@ SRS-049,Test execution,Documentation steps,"During a test run, System requires t
 System records the entered values with the test run",Test (automated),"Some steps capture objective evidence (versions, settings, IDs) rather than compare against an expected result.",Draft
 SRS-050,Test execution,Run evidence,"User is able to attach evidence files to a test run as a whole and optionally associate each file with a step
 User is able to record the screen during a manual test run and attach the recording to the run as evidence",Test (automated),"Evidence is gathered once per run, not demanded at every step; a screen recording shows the whole execution.",Draft
+SRS-051,Trackers,Versions of approved items,"User is able to start a new version of an approved item, giving a reason
+The approved version remains approved and in use until the new version is approved
+System prevents any user from changing an approved version
+System allows only one open version of an item at a time",Test (automated),"An item needed for the current release must stay approved while it is changed for the next one.",Draft
+SRS-052,Releases,Release contents,"User is able to set the release an open version is for
+When a version is approved, System records that version in its target release
+User is able to carry the contents of a release forward into a new release
+System displays the items and versions a release contains, and the open versions aimed at it",Test (automated),"Each release must say exactly which version of each item it contains.",Draft
+SRS-053,Trackers,Requirement statements (ERs),"System stores each SRS requirement as numbered statements (ERs) with permanent IDs, e.g. SRS-011.3
+System never reuses an ER number for a different statement
+User is able to select the ER each test step verifies
+System displays which ERs are covered by test steps
+System flags a test step when the ER it verifies has been reworded since the step was written",Test (automated),"Checking that every ER is tested should be done by the system, not by hand in every review.",Draft
+SRS-054,Workflow,Requirement and test case pair,"When an SRS item is created, System creates its test case with the same number
+User is unable to create a test case on its own
+User is able to view and edit an SRS item and its test case on one page
+System moves an SRS item and its test case through review together
+One review signature action records a signature on both, each bound to its own version",Test (automated),"A requirement and its test case are reviewed as one unit while staying separate records.",Draft
+SRS-055,Workflow,Ready for review checklist,"System prevents an item from entering Ready for Review until its required fields are filled
+System prevents a test case from entering Ready for Review while any ER of its requirement has no verifying step
+System sends a requirement and its test case to review only when both are Ready for Review",Test (automated),"Incomplete work should not reach a reviewer.",Draft
+SRS-056,Workflow,Needs Work,"The reviewer of a review stage is able to send an item back to Needs Work
+System requires a reason when an item is sent back
+Reviewer is able to attach comments to an ER or test step
+System allows items to leave Needs Work only to the first review stage
+After rework, System requires every review stage to be signed again",Test (automated),"Whoever fixes the item must know exactly what to change, and every reviewer sees the fix.",Draft
+SRS-057,Workflow,Review dashboard,"System displays each user's items waiting for their signature, grouped by project and release
+System displays each user's items that were sent back to them, with the reason
+User is able to sign an item from the dashboard
+During review, System displays what changed since the last approved version",Test (automated),"Reviewers clear their work from one place instead of building reports per stage and release.",Draft
+SRS-058,Workflow,Assignee,"System assigns each open version to its author by default
+User is able to reassign an open version to a project member who can edit items
+System records each reassignment in the audit trail",Test (automated),"Rejected work needs a clear owner.",Draft

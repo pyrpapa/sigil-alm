@@ -4,7 +4,7 @@ import FieldInput from '../../components/FieldInput'
 import { cleanSteps, isEmpty, stepProblems } from '../../lib/trackers'
 
 // Generated from the tracker's field configuration (SRS-016). Used to create and to edit.
-export default function ItemForm({ config, members, item = null, requireReason = false, onCancel, onSaved }) {
+export default function ItemForm({ config, members, releases = [], item = null, context = {}, requireReason = false, onCancel, onSaved }) {
   // Fields filled in by state actions (e.g. "Approved on") are set by the workflow, not typed in.
   const autoKeys = new Set(config.actions.map((a) => a.field_key))
   const fields = config.fields.filter((f) => !autoKeys.has(f.key) && (!f.is_retired || !isEmpty(item?.values?.[f.key])))
@@ -12,6 +12,8 @@ export default function ItemForm({ config, members, item = null, requireReason =
   const [title, setTitle] = useState(item?.title ?? '')
   const [values, setValues] = useState(item?.values ?? {})
   const [folder, setFolder] = useState(item?.folder_id ?? '')
+  const [release, setRelease] = useState('')
+  const openReleases = releases.filter((r) => !r.complete)
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -44,6 +46,7 @@ export default function ItemForm({ config, members, item = null, requireReason =
           p_title: title.trim(),
           p_values: clean,
           p_folder: folder || null,
+          p_release: release || null,
         })
     setSaving(false)
     if (error) setError(error.message)
@@ -65,12 +68,13 @@ export default function ItemForm({ config, members, item = null, requireReason =
           key={f.id}
           field={f}
           members={members}
+          context={context}
           value={values[f.key]}
           onChange={(v) => setValues((cur) => ({ ...cur, [f.key]: v }))}
         />
       ))}
 
-      {config.folders.length > 0 && (
+      {!item && config.folders.length > 0 && (
         <label>
           Folder
           <select value={folder} onChange={(e) => setFolder(e.target.value)}>
@@ -78,6 +82,20 @@ export default function ItemForm({ config, members, item = null, requireReason =
             {config.folders.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {!item && openReleases.length > 0 && config.tracker.type_key !== 'REL' && (
+        <label>
+          For release
+          <select value={release} onChange={(e) => setRelease(e.target.value)}>
+            <option value="">No release yet</option>
+            {openReleases.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.item_key} {r.title}
               </option>
             ))}
           </select>

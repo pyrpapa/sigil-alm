@@ -8,7 +8,7 @@ export default function ProjectActivity() {
   const { project } = useOutletContext()
   const [entries, setEntries] = useState([])
   const [names, setNames] = useState({})
-  const [keys, setKeys] = useState({ items: {}, trackers: {} })
+  const [keys, setKeys] = useState({ items: {}, trackers: {}, revisions: {} })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showConfig, setShowConfig] = useState(false)
@@ -39,13 +39,16 @@ export default function ProjectActivity() {
         const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', [...ids])
         setNames(Object.fromEntries((profiles ?? []).map((p) => [p.id, p.full_name || 'Unnamed user'])))
       }
-      const [{ data: items }, { data: trackers }] = await Promise.all([
+      const [{ data: items }, { data: trackers }, { data: revisions }] = await Promise.all([
         supabase.from('items').select('id, item_key').eq('project_id', project.id),
         supabase.from('trackers').select('id, type_key').eq('project_id', project.id),
+        supabase.from('item_revisions').select('id, item_id, revision').eq('project_id', project.id),
       ])
+      const itemKeys = Object.fromEntries((items ?? []).map((i) => [i.id, i.item_key]))
       setKeys({
-        items: Object.fromEntries((items ?? []).map((i) => [i.id, i.item_key])),
+        items: itemKeys,
         trackers: Object.fromEntries((trackers ?? []).map((t) => [t.id, t.type_key])),
+        revisions: Object.fromEntries((revisions ?? []).map((r) => [r.id, { key: itemKeys[r.item_id], revision: r.revision }])),
       })
       setEntries(data)
       setLoading(false)
@@ -54,7 +57,7 @@ export default function ProjectActivity() {
   }, [project.id])
 
   const visible = useMemo(
-    () => entries.filter((e) => showConfig || !CONFIG_TABLES.has(e.table_name)),
+    () => entries.filter((e) => (showConfig || !CONFIG_TABLES.has(e.table_name)) && !isPointerOnly(e)),
     [entries, showConfig],
   )
   const hiddenCount = entries.length - visible.length
@@ -117,6 +120,10 @@ export default function ProjectActivity() {
   )
 }
 
+// An item's pointers to its latest and approved versions change alongside the version's own entries.
+const isPointerOnly = (e) =>
+  e.table_name === 'items' && e.action === 'UPDATE' && e.changed_fields?.every((f) => f === 'head_revision_id' || f === 'approved_revision_id')
+
 const CONFIG_TABLES = new Set(['role_permissions', 'trackers', 'tracker_fields', 'tracker_states', 'tracker_transitions', 'tracker_state_actions'])
 
 const CONFIG_NOUNS = {
@@ -159,12 +166,21 @@ function describe(e, names, keys) {
   if (e.table_name === 'items') {
     const key = keys.items[e.record_id] ?? v.item_key ?? 'an item'
     if (e.action === 'INSERT') return `Created ${key}`
+    if (e.changed_fields?.includes('folder_id')) return `Moved ${key} to another folder`
+    return `Updated ${key}`
+  }
+  if (e.table_name === 'item_revisions') {
+    const r = keys.revisions[e.record_id] ?? {}
+    const key = `${r.key ?? 'an item'} version ${r.revision ?? v.revision ?? '?'}`
+    if (e.action === 'INSERT') return (r.revision ?? v.revision) === 1 ? `Created ${key}` : `Started ${key}`
     if (e.changed_fields?.includes('state_id')) return `Moved ${key}` + (e.reason ? ` (${e.reason.replace(/^Moved /, '').split(':')[0]})` : '')
-    if (e.changed_fields?.includes('version')) return `Edited ${key} (version ${v.version})`
+    if (e.changed_fields?.includes('assignee')) return `Reassigned ${key}`
+    if (e.changed_fields?.includes('content_version')) return `Edited ${key}`
     return `Updated ${key}`
   }
   if (e.table_name === 'item_signatures') {
-    return `${v.signer_name ?? 'Someone'} signed ${keys.items[v.item_id] ?? 'an item'} as ${v.meaning} (${v.state_name}, version ${v.item_version})`
+    const r = keys.revisions[v.revision_id] ?? {}
+    return `${v.signer_name ?? 'Someone'} signed ${keys.items[v.item_id] ?? 'an item'} as ${v.meaning} (${v.state_name}, version ${r.revision ?? '?'})`
   }
   if (e.table_name === 'trackers') {
     if (e.action === 'INSERT') return `Set up the ${v.type_key} tracker`
@@ -191,12 +207,15 @@ function formatValue(field, value) {
 }
 
 // Item content changes are shown in full on the item's History tab.
-const HIDDEN_FIELDS = new Set(['values', 'version', 'version_by', 'state_id', 'state_entered_at', 'folder_id', 'position', 'next_number'])
+const HIDDEN_FIELDS = new Set([
+  'values', 'version', 'version_by', 'state_id', 'state_entered_at', 'folder_id', 'position', 'next_number',
+  'title', 'content_version', 'content_by', 'assignee', 'approved_at', 'head_revision_id', 'approved_revision_id',
+])
 
 function Changes({ entry }) {
   if (entry.action !== 'UPDATE' || !entry.changed_fields) return <span className="muted">—</span>
   const shown = entry.changed_fields.filter((f) => !HIDDEN_FIELDS.has(f))
-  if (shown.length === 0) return <span className="muted small">{entry.table_name === 'items' ? 'See the item\'s history' : '—'}</span>
+  if (shown.length === 0) return <span className="muted small">{['items', 'item_revisions'].includes(entry.table_name) ? 'See the item\'s history' : '—'}</span>
   return (
     <ul className="changes">
       {shown.map((f) => (

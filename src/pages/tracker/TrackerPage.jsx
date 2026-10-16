@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { loadMembers, loadTracker } from '../../lib/trackers'
+import { loadMembers, loadReleases, loadTracker } from '../../lib/trackers'
 import { formatTimestamp } from '../../lib/labels'
 import ItemForm from './ItemForm'
 import StateBadge from './StateBadge'
@@ -9,16 +9,18 @@ import StateBadge from './StateBadge'
 async function fetchAll(projectId, typeKey) {
   const config = await loadTracker(projectId, typeKey)
   if (!config) return { config: null }
-  const [{ data: items, error }, members] = await Promise.all([
+  const [{ data: items, error }, members, releases, pins] = await Promise.all([
     supabase
-      .from('items')
-      .select('id, item_key, number, title, state_id, folder_id, version, updated_at')
+      .from('item_heads')
+      .select('id, item_key, number, title, state_id, folder_id, revision, approved_revision, assignee, target_release_id, updated_at')
       .eq('tracker_id', config.tracker.id)
       .order('number'),
     loadMembers(projectId),
+    loadReleases(projectId),
+    supabase.from('release_pins').select('release_id, item_id').eq('project_id', projectId),
   ])
-  if (error) throw error
-  return { config, items, members }
+  if (error || pins.error) throw error || pins.error
+  return { config, items, members, releases, pins: pins.data }
 }
 
 export default function TrackerPage() {
@@ -31,6 +33,7 @@ export default function TrackerPage() {
   const [folder, setFolder] = useState('')
   const [stateFilter, setStateFilter] = useState('')
   const [search, setSearch] = useState('')
+  const [releaseFilter, setReleaseFilter] = useState('')
   const [newFolder, setNewFolder] = useState(null)
 
   const reload = useCallback(
@@ -60,12 +63,18 @@ export default function TrackerPage() {
   if (!data) return <p className="muted">Loading tracker…</p>
   if (!data.config) return <p>No tracker called {typeKey} in this project.</p>
 
-  const { config, items, members } = data
+  const { config, items, members, releases, pins } = data
+  // Test cases paired with requirements are created with them, not on their own.
+  const secondary = Boolean(config.tracker.pair_tracker_id) && !config.tracker.is_pair_primary
+  // In a release = pinned there, or an open draft aimed at it.
+  const inRelease = (i) =>
+    i.target_release_id === releaseFilter || pins.some((p) => p.release_id === releaseFilter && p.item_id === i.id)
   const q = search.trim().toLowerCase()
   const shown = items.filter(
     (i) =>
       (!folder || (folder === 'none' ? !i.folder_id : i.folder_id === folder)) &&
       (!stateFilter || i.state_id === stateFilter) &&
+      (!releaseFilter || inRelease(i)) &&
       (!q || i.item_key.toLowerCase().includes(q) || i.title.toLowerCase().includes(q)),
   )
   const base = `/projects/${project.id}/trackers/${typeKey}`
@@ -93,12 +102,13 @@ export default function TrackerPage() {
               Configure
             </Link>
           )}
-          {can('items.create') && (
+          {secondary && <span className="muted small">Test cases are created with their requirement.</span>}
+          {can('items.create') && !secondary && (
             <Link className="button secondary-link" to={`${base}/import`}>
               Import CSV
             </Link>
           )}
-          {can('items.create') && !creating && (
+          {can('items.create') && !creating && !secondary && (
             <button type="button" onClick={() => setCreating(true)}>
               New {config.tracker.type_key} item
             </button>
@@ -110,6 +120,7 @@ export default function TrackerPage() {
         <ItemForm
           config={config}
           members={members}
+          releases={releases}
           onCancel={() => setCreating(false)}
           onSaved={(item) => navigate(`${base}/${item.item_key}`)}
         />
@@ -178,6 +189,19 @@ export default function TrackerPage() {
                   ))}
               </select>
             </label>
+            {releases.length > 0 && typeKey !== 'REL' && (
+              <label>
+                Release
+                <select value={releaseFilter} onChange={(e) => setReleaseFilter(e.target.value)}>
+                  <option value="">All releases</option>
+                  {releases.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.item_key} {r.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
 
           <div className="table-wrap">
@@ -188,6 +212,7 @@ export default function TrackerPage() {
                   <th>Title</th>
                   <th>State</th>
                   <th>Version</th>
+                  <th>Assignee</th>
                   <th>Updated</th>
                 </tr>
               </thead>
@@ -201,13 +226,25 @@ export default function TrackerPage() {
                     <td>
                       <StateBadge state={stateById[i.state_id]} />
                     </td>
-                    <td>{i.version}</td>
+                    <td className="nowrap">
+                      v{i.revision}
+                      {i.approved_revision && i.approved_revision !== i.revision && (
+                        <div className="muted small">v{i.approved_revision} approved</div>
+                      )}
+                    </td>
+                    <td className="small">
+                      {stateById[i.state_id]?.is_final ? (
+                        <span className="muted">—</span>
+                      ) : (
+                        (members.find((m) => m.user_id === i.assignee)?.full_name ?? <span className="muted">Nobody</span>)
+                      )}
+                    </td>
                     <td className="small muted nowrap">{formatTimestamp(i.updated_at)}</td>
                   </tr>
                 ))}
                 {shown.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="muted">
+                    <td colSpan={6} className="muted">
                       {items.length === 0 ? 'No items yet.' : 'No items match.'}
                     </td>
                   </tr>

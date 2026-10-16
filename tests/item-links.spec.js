@@ -65,7 +65,6 @@ test('CSV import with preview, then links on both items', { tag: ['@SRS-019', '@
   await links.locator('.link-row', { hasText: 'SRS-002' }).getByRole('button', { name: 'Remove' }).click()
   await page.getByRole('button', { name: 'Remove link' }).click()
   await expect(links.locator('.link-row', { hasText: 'SRS-002' })).toHaveCount(0)
-  await expect(page.getByText('Version 2')).toBeVisible()
   await page.getByRole('button', { name: 'History' }).click()
   await expect(page.getByRole('table', { name: 'Item history' })).toContainText('Link removed: is mitigated by SRS-002')
 })

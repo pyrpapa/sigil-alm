@@ -54,9 +54,14 @@ export function mapColumns(headers, config, linkTypes) {
     if (h === 'id') return { header, kind: 'id', label: 'ID', note: 'Checked against the ID each row gets' }
     if (h === 'title') return { header, kind: 'title' }
     if (h === 'folder') return { header, kind: 'folder', note: 'Folders are created if needed' }
+    if (h === 'release' && config.tracker.type_key !== 'REL')
+      return { header, kind: 'release', label: 'Release', note: 'The release (e.g. REL-001) each item is for' }
     if (h === 'status' || h === 'state')
       return { header, kind: 'ignore', note: 'Imported items start in New; approval happens in Sigil' }
-    const field = fields.find((f) => f.key === h || norm(f.label) === h)
+    let field = fields.find((f) => f.key === h || norm(f.label) === h)
+    // An SRS "requirement" column becomes the ER list, one ER per line.
+    if (!field && (h === 'requirement' || h === 'requirements' || h === 'ers'))
+      field = fields.find((f) => f.field_type === 'statements')
     if (field && autoKeys.has(field.key)) return { header, kind: 'ignore', note: `${field.label} is set by the workflow` }
     if (field) {
       if (field.field_type === 'steps') return { header, kind: 'ignore', note: 'Test steps cannot be imported from CSV yet' }
@@ -71,6 +76,18 @@ export function mapColumns(headers, config, linkTypes) {
     if (type) return { header, kind: 'link', linkType: type, note: `Links: ${config.tracker.type_key} ${type.label} ${type.target_type_key}` }
     return { header, kind: 'ignore', note: 'Not a field of this tracker' }
   })
+}
+
+// Text to ERs: one per line; lines starting with -, * or • stay inside the ER above.
+export function splitStatements(text) {
+  const out = []
+  for (const line of text.split('\n')) {
+    const t = line.trim()
+    if (!t) continue
+    if (/^[-*•]\s+/.test(t) && out.length) out[out.length - 1] += `\n${t}`
+    else out.push(t)
+  }
+  return out.map((t, i) => ({ n: i + 1, text: t }))
 }
 
 // Dropdowns: exact, then case-insensitive, then a unique prefix ("H" -> "High").
@@ -91,6 +108,8 @@ function convert(field, raw, members) {
     }
     case 'select':
       return matchOption(field.options, raw)
+    case 'statements':
+      return splitStatements(raw)
     case 'user': {
       const lower = raw.toLowerCase()
       const m = members.find((x) => x.email?.toLowerCase() === lower || x.full_name?.toLowerCase() === lower)
@@ -111,6 +130,7 @@ export function buildImportRows(table, columns, members = []) {
       if (col.kind === 'id') row.id = raw
       else if (col.kind === 'title') row.title = raw
       else if (col.kind === 'folder') row.folder = raw
+      else if (col.kind === 'release') row.release = raw
       else if (col.kind === 'field') row.values[col.field.key] = convert(col.field, raw, members)
       else if (col.kind === 'link')
         raw

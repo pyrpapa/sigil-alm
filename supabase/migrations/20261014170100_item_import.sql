@@ -26,7 +26,7 @@ declare
   v_row jsonb;
   v_results jsonb := '[]'::jsonb;
   v_errors int := 0;
-  v_item public.items;
+  v_item public.item_heads;
   v_folder uuid;
   v_folder_name text;
   v_expected text;

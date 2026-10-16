@@ -43,7 +43,7 @@ export default function ImportPage() {
   async function runImport(rows, commit, name) {
     const { data, error } = await supabase.rpc('import_items', {
       p_tracker: config.tracker.id,
-      p_rows: rows.map((r) => ({ id: r.id, title: r.title, folder: r.folder, values: r.values, links: r.links })),
+      p_rows: rows.map((r) => ({ id: r.id, title: r.title, folder: r.folder, release: r.release, values: r.values, links: r.links })),
       p_commit: commit,
       p_source: name,
     })
@@ -113,7 +113,12 @@ export default function ImportPage() {
         <section className="card stack-sm">
           <p className="small">
             The first row names the columns: <code>title</code> (required), this tracker's fields by key or label (
-            {importable.map((f) => f.key).join(', ')}), and optionally <code>id</code> and <code>folder</code>
+            {importable.map((f) => f.key).join(', ')}), and optionally <code>id</code>, <code>folder</code>
+            {typeKey !== 'REL' && (
+              <>
+                , <code>release</code>
+              </>
+            )}
             {outgoing.length > 0 && (
               <>
                 , and link columns ({outgoing.map((t) => `${t.key} or linked_${t.target_type_key.toLowerCase()}`).join(', ')}, IDs
