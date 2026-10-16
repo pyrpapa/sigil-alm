@@ -12,7 +12,7 @@ async function fetchAll(projectId, typeKey) {
   const [{ data: items, error }, members, releases, pins] = await Promise.all([
     supabase
       .from('item_heads')
-      .select('id, item_key, number, title, state_id, folder_id, revision, approved_revision, assignee, target_release_id, updated_at')
+      .select('id, item_key, number, title, state_id, folder_id, revision, approved_revision, assignee, target_release_id, pair_item_id, updated_at')
       .eq('tracker_id', config.tracker.id)
       .order('number'),
     loadMembers(projectId),
@@ -20,7 +20,17 @@ async function fetchAll(projectId, typeKey) {
     supabase.from('release_pins').select('release_id, item_id').eq('project_id', projectId),
   ])
   if (error || pins.error) throw error || pins.error
-  return { config, items, members, releases, pins: pins.data }
+  // The requirement list shows each requirement's test case alongside it.
+  let partners = {}
+  if (config.tracker.is_pair_primary) {
+    const [{ data: tcs, error: e1 }, { data: tcStates, error: e2 }] = await Promise.all([
+      supabase.from('item_heads').select('id, item_key, state_id').eq('tracker_id', config.tracker.pair_tracker_id),
+      supabase.from('tracker_states').select('id, name, is_final, review_role, locks_item, is_ready, is_rework').eq('tracker_id', config.tracker.pair_tracker_id),
+    ])
+    if (e1 || e2) throw e1 || e2
+    partners = Object.fromEntries(tcs.map((t) => [t.id, { ...t, state: tcStates.find((s) => s.id === t.state_id) }]))
+  }
+  return { config, items, members, releases, pins: pins.data, partners }
 }
 
 export default function TrackerPage() {
@@ -63,7 +73,8 @@ export default function TrackerPage() {
   if (!data) return <p className="muted">Loading tracker…</p>
   if (!data.config) return <p>No tracker called {typeKey} in this project.</p>
 
-  const { config, items, members, releases, pins } = data
+  const { config, items, members, releases, pins, partners } = data
+  const hub = config.tracker.is_pair_primary
   // Test cases paired with requirements are created with them, not on their own.
   const secondary = Boolean(config.tracker.pair_tracker_id) && !config.tracker.is_pair_primary
   // In a release = pinned there, or an open draft aimed at it.
@@ -94,7 +105,7 @@ export default function TrackerPage() {
       <div className="card-head">
         <h2>
           <Link to={`/projects/${project.id}/trackers`}>Trackers</Link> / <span className="prefix">{config.tracker.type_key}</span>{' '}
-          {config.tracker.name}
+          {hub ? 'Requirements & Test Cases' : config.tracker.name}
         </h2>
         <div className="actions">
           {can('trackers.configure') && (
@@ -211,6 +222,7 @@ export default function TrackerPage() {
                   <th>ID</th>
                   <th>Title</th>
                   <th>State</th>
+                  {hub && <th>Test case</th>}
                   <th>Version</th>
                   <th>Assignee</th>
                   <th>Updated</th>
@@ -226,6 +238,18 @@ export default function TrackerPage() {
                     <td>
                       <StateBadge state={stateById[i.state_id]} />
                     </td>
+                    {hub && (
+                      <td className="nowrap">
+                        {partners[i.pair_item_id] ? (
+                          <>
+                            <span className="prefix small">{partners[i.pair_item_id].item_key}</span>{' '}
+                            {partners[i.pair_item_id].state?.name !== stateById[i.state_id]?.name && <StateBadge state={partners[i.pair_item_id].state} />}
+                          </>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </td>
+                    )}
                     <td className="nowrap">
                       v{i.revision}
                       {i.approved_revision && i.approved_revision !== i.revision && (
@@ -244,7 +268,7 @@ export default function TrackerPage() {
                 ))}
                 {shown.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="muted">
+                    <td colSpan={hub ? 7 : 6} className="muted">
                       {items.length === 0 ? 'No items yet.' : 'No items match.'}
                     </td>
                   </tr>

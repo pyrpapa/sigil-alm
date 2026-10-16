@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
+// Test runs will live under each test case, on its requirement's page (Phase 3).
+// Until then their tracker isn't shown as a place of its own.
+const HIDDEN = new Set(['TR'])
+
 export default function ProjectTrackers() {
   const { project, can } = useOutletContext()
   const [trackers, setTrackers] = useState(null)
@@ -11,7 +15,11 @@ export default function ProjectTrackers() {
   useEffect(() => {
     let current = true
     Promise.all([
-      supabase.from('trackers').select('id, type_key, name, description').eq('project_id', project.id).order('position'),
+      supabase
+        .from('trackers')
+        .select('id, type_key, name, description, pair_tracker_id, is_pair_primary')
+        .eq('project_id', project.id)
+        .order('position'),
       supabase.from('items').select('tracker_id').eq('project_id', project.id),
     ]).then(([t, i]) => {
       if (!current) return
@@ -34,31 +42,56 @@ export default function ProjectTrackers() {
     )
   if (!trackers) return <p className="muted">Loading trackers…</p>
 
+  const plural = (n, word) => `${n} ${n === 1 ? word : `${word}s`}`
+  // A requirement tracker and its test cases are one hub; the test case tracker has no card of its own.
+  const shown = trackers.filter((t) => !HIDDEN.has(t.type_key) && !(t.pair_tracker_id && !t.is_pair_primary))
+
   return (
     <div className="stack">
       <ul className="tracker-grid" aria-label="Trackers">
-        {trackers.map((t) => (
-          <li key={t.id} className="card tracker-card">
-            <Link to={t.type_key} className="tracker-card-link">
-              <div className="tracker-card-head">
-                <span className="prefix">{t.type_key}</span>
+        {shown.map((t) => {
+          const pair = t.is_pair_primary ? trackers.find((x) => x.id === t.pair_tracker_id) : null
+          return (
+            <li key={t.id} className={`card tracker-card${pair ? ' hub-card' : ''}`}>
+              <Link to={t.type_key} className="tracker-card-link">
+                <div className="tracker-card-head">
+                  <span className="prefix">
+                    {t.type_key}
+                    {pair && ` + ${pair.type_key}`}
+                  </span>
+                  <span className="muted small">
+                    {pair ? `${plural(counts[t.id] ?? 0, 'requirement')} · ${plural(counts[pair.id] ?? 0, 'test case')}` : plural(counts[t.id] ?? 0, 'item')}
+                  </span>
+                </div>
+                <strong>{pair ? 'Requirements & Test Cases' : t.name}</strong>
                 <span className="muted small">
-                  {counts[t.id] ?? 0} {counts[t.id] === 1 ? 'item' : 'items'}
+                  {pair
+                    ? 'Each requirement and its test case, written, reviewed and approved together on one page.'
+                    : t.description}
                 </span>
-              </div>
-              <strong>{t.name}</strong>
-              <span className="muted small">{t.description}</span>
-            </Link>
-            {can('trackers.configure') && (
-              <Link to={`${t.type_key}/config`} className="small config-link">
-                Configure fields and workflow
               </Link>
-            )}
-          </li>
-        ))}
+              {pair && (
+                <Link to={pair.type_key} className="small config-link">
+                  All test cases
+                </Link>
+              )}
+              {can('trackers.configure') && (
+                <Link to={`${t.type_key}/config`} className="small config-link">
+                  Configure fields and workflow
+                </Link>
+              )}
+              {pair && can('trackers.configure') && (
+                <Link to={`${pair.type_key}/config`} className="small config-link">
+                  Configure test case fields
+                </Link>
+              )}
+            </li>
+          )
+        })}
       </ul>
       <p className="muted small">
-        Want to see where test execution is heading? <Link to="../preview">Open the test run preview</Link> (sample data).
+        Test runs will appear under each test case once test execution is built. Want to see where it's heading?{' '}
+        <Link to="../preview">Open the test run preview</Link> (sample data).
       </p>
     </div>
   )

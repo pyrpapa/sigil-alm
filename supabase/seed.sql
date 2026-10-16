@@ -87,3 +87,6 @@ insert into auth.identities (
   '{"sub": "e2e00000-0000-4000-8000-000000000003", "email": "e2e-val@sigil.test", "email_verified": true}',
   'email', now(), now(), now()
 );
+
+-- The main E2E user is a System Admin, so E2E tests can create accounts.
+update public.profiles set is_system_admin = true where id = 'e2e00000-0000-4000-8000-000000000001';
