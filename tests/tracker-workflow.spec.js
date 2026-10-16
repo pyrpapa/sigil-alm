@@ -32,7 +32,7 @@ async function newProject(page, name, members = []) {
   for (const [email, role] of members) {
     await page.getByRole('link', { name: 'Members' }).click()
     await page.getByRole('button', { name: 'Add member' }).click()
-    await page.getByLabel('Email').fill(email)
+    await page.getByRole('combobox', { name: 'Person' }).selectOption(email)
     await page.getByRole('combobox', { name: 'Role', exact: true }).selectOption(role)
     await page.getByRole('button', { name: 'Add member' }).click()
     await expect(page.getByRole('table', { name: 'Members' })).toContainText(email)
@@ -46,11 +46,6 @@ async function move(page, key, to) {
   await card.getByRole('button', { name: `Move to ${to}` }).first().click()
   await card.getByRole('button', { name: `Move to ${to}` }).last().click()
   await expect(page.locator('.pair-row', { hasText: key }).locator('.pair-row-head .badge', { hasText: to })).toBeVisible()
-}
-
-async function confirmMove(page, to) {
-  await page.getByRole('button', { name: `Move to ${to}` }).first().click()
-  await page.getByRole('button', { name: `Move to ${to}` }).last().click()
 }
 
 test(
@@ -100,8 +95,7 @@ test(
     await page.getByRole('button', { name: /Sign Val Review/ }).click()
     await page.getByLabel('Re-enter your password').fill(PASSWORD)
     await page.getByRole('button', { name: 'Sign as Reviewed' }).click()
-    await expect(page.getByRole('status').filter({ hasText: 'Reviewed.' })).toBeVisible()
-    await confirmMove(page, 'QA Review')
+    // Signing moves the pair straight on to the next stage
     await expect(page.getByRole('status').filter({ hasText: 'Waiting for QA Review' })).toBeVisible()
 
     // QA: wrong password records nothing; then signs and approves
@@ -112,8 +106,6 @@ test(
     await expect(page.getByRole('alert')).toContainText('Password incorrect')
     await page.getByLabel('Re-enter your password').fill(PASSWORD)
     await page.getByRole('button', { name: 'Sign as Approved' }).click()
-    await expect(page.getByRole('status').filter({ hasText: 'Reviewed.' })).toContainText(QA_NAME)
-    await confirmMove(page, 'Approved')
     await expect(page.getByRole('status').filter({ hasText: 'Version 1 of SRS-001 and TC-001 is approved' })).toBeVisible()
     await expect(page.getByRole('button', { name: /^Edit/ })).toHaveCount(0)
 

@@ -4,7 +4,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set search_path = public, extensions;
 
-select plan(14);
+select plan(17);
 
 insert into auth.users (id, email, raw_user_meta_data, encrypted_password) values
   ('a1111111-1111-4111-8111-111111111111', 'admin@test.local', '{"full_name": "Ada Admin"}', extensions.crypt('admin-pass-1', extensions.gen_salt('bf'))),
@@ -70,6 +70,24 @@ select results_eq(
   $$ values ('a1111111-1111-4111-8111-111111111111', 'Password reset by a System Admin'),
             (current_setting('test.eve'), 'Changed by the user') $$,
   'Password changes are audited, without the password (SRS-028)');
+
+-- Picking a new project member from a list -----------------------------------------
+set local role authenticated;
+select pg_temp.as_user('a1111111-1111-4111-8111-111111111111');
+select set_config('test.project', (select (create_project('Members Test')).id::text), true);
+select results_eq(
+  $$ select email from project_addable_users(current_setting('test.project')::uuid) order by email $$,
+  $$ values ('bob@test.local'), ('eve@test.local') $$,
+  'Someone managing a project lists every account that is not yet a member');
+select add_project_member(current_setting('test.project')::uuid, 'bob@test.local', 'viewer');
+select results_eq(
+  $$ select email from project_addable_users(current_setting('test.project')::uuid) $$,
+  $$ values ('eve@test.local') $$,
+  'Members already in the project drop off the list');
+select pg_temp.as_user('b2222222-2222-4222-8222-222222222222');
+select throws_ok($$ select * from project_addable_users(current_setting('test.project')::uuid) $$, '42501', null,
+  'Members who cannot manage members do not get the list');
+reset role;
 
 select * from finish();
 rollback;

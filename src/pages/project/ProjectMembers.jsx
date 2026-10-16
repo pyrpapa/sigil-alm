@@ -122,11 +122,25 @@ export default function ProjectMembers() {
 }
 
 function AddMemberForm({ projectId, onCancel, onAdded }) {
+  const [people, setPeople] = useState(null)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('viewer')
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  // Everyone with a Sigil account who is not in this project yet.
+  useEffect(() => {
+    let current = true
+    supabase.rpc('project_addable_users', { p_project: projectId }).then(({ data, error }) => {
+      if (!current) return
+      if (error) setError(error.message)
+      else setPeople(data)
+    })
+    return () => {
+      current = false
+    }
+  }, [projectId])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -146,11 +160,23 @@ function AddMemberForm({ projectId, onCancel, onAdded }) {
   return (
     <form className="card form-inline" onSubmit={handleSubmit}>
       <h3>Add member</h3>
-      <p className="muted small">The person must already have a Sigil account, created by a System Admin.</p>
+      <p className="muted small">
+        Choose from everyone with a Sigil account. Someone not listed needs an account first, created by a System Admin
+        under Users.
+      </p>
       <div className="form-row">
         <label>
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          Person
+          <select value={email} onChange={(e) => setEmail(e.target.value)} required disabled={!people?.length}>
+            <option value="">
+              {people === null ? 'Loading…' : people.length === 0 ? 'Everyone is already a member' : 'Choose a person'}
+            </option>
+            {(people ?? []).map((p) => (
+              <option key={p.id} value={p.email}>
+                {p.full_name ? `${p.full_name} (${p.email})` : p.email}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           Role
