@@ -1363,3 +1363,12 @@ td > input + button {
     padding-top: 0;
   }
 }
+
+/* Account and user admin */
+.narrow {
+  max-width: 640px;
+}
+
+.topbar-right a {
+  text-decoration: none;
+}
