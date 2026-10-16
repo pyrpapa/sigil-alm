@@ -72,16 +72,17 @@ select results_eq(
   'Password changes are audited, without the password (SRS-028)');
 
 -- Picking a new project member from a list -----------------------------------------
+-- (Only this file's accounts are checked: the database may also hold seed.sql's users.)
 set local role authenticated;
 select pg_temp.as_user('a1111111-1111-4111-8111-111111111111');
 select set_config('test.project', (select (create_project('Members Test')).id::text), true);
 select results_eq(
-  $$ select email from project_addable_users(current_setting('test.project')::uuid) order by email $$,
+  $$ select email from project_addable_users(current_setting('test.project')::uuid) where email like '%@test.local' order by email $$,
   $$ values ('bob@test.local'), ('eve@test.local') $$,
   'Someone managing a project lists every account that is not yet a member');
 select add_project_member(current_setting('test.project')::uuid, 'bob@test.local', 'viewer');
 select results_eq(
-  $$ select email from project_addable_users(current_setting('test.project')::uuid) $$,
+  $$ select email from project_addable_users(current_setting('test.project')::uuid) where email like '%@test.local' $$,
   $$ values ('eve@test.local') $$,
   'Members already in the project drop off the list');
 select pg_temp.as_user('b2222222-2222-4222-8222-222222222222');
