@@ -11,6 +11,7 @@ import ProjectLayout from './pages/project/ProjectLayout'
 import ProjectOverview from './pages/project/ProjectOverview'
 import ProjectMembers from './pages/project/ProjectMembers'
 import ProjectActivity from './pages/project/ProjectActivity'
+import ProjectTrash from './pages/project/ProjectTrash'
 import ProjectTrackers from './pages/project/ProjectTrackers'
 import ProjectRepository from './pages/project/ProjectRepository'
 import TrackerPage from './pages/tracker/TrackerPage'
@@ -58,6 +59,7 @@ export default function App() {
             <Route path="repository" element={<ProjectRepository />} />
             <Route path="members" element={<ProjectMembers />} />
             <Route path="activity" element={<ProjectActivity />} />
+            <Route path="trash" element={<ProjectTrash />} />
           </Route>
         </Route>
 

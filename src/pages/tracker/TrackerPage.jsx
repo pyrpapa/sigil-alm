@@ -5,6 +5,7 @@ import { loadMembers, loadReleases, loadTracker } from '../../lib/trackers'
 import { formatTimestamp } from '../../lib/labels'
 import ItemForm from './ItemForm'
 import StateBadge from './StateBadge'
+import TrashForm from '../../components/TrashForm'
 
 async function fetchAll(projectId, typeKey) {
   const config = await loadTracker(projectId, typeKey)
@@ -45,6 +46,7 @@ export default function TrackerPage() {
   const [search, setSearch] = useState('')
   const [releaseFilter, setReleaseFilter] = useState('')
   const [newFolder, setNewFolder] = useState(null)
+  const [deletingFolder, setDeletingFolder] = useState(null)
 
   const reload = useCallback(
     () => fetchAll(project.id, typeKey).then(setData, (e) => setError(e.message)),
@@ -151,6 +153,16 @@ export default function TrackerPage() {
                 <button type="button" className={`folder${folder === f.id ? ' active' : ''}`} onClick={() => setFolder(f.id)}>
                   {f.name} <span className="muted">{items.filter((i) => i.folder_id === f.id).length}</span>
                 </button>
+                {folder === f.id && can('trash.manage') && (
+                  <button
+                    type="button"
+                    className="link-button small muted"
+                    aria-label={`Delete folder ${f.name}`}
+                    onClick={() => setDeletingFolder(f)}
+                  >
+                    Delete folder…
+                  </button>
+                )}
               </li>
             ))}
             {config.folders.length > 0 && (
@@ -182,6 +194,25 @@ export default function TrackerPage() {
         </aside>
 
         <div className="stack">
+          {deletingFolder && (
+            <TrashForm
+              key={deletingFolder.id}
+              title={`Delete folder "${deletingFolder.name}"?`}
+              submitLabel="Delete folder"
+              onDelete={(reason) => supabase.rpc('trash_folder', { p_folder: deletingFolder.id, p_reason: reason })}
+              onDone={() => {
+                setDeletingFolder(null)
+                setFolder('')
+                reload()
+              }}
+              onCancel={() => setDeletingFolder(null)}
+            >
+              <p>
+                The folder and the {items.filter((i) => i.folder_id === deletingFolder.id).length} item(s) in it leave the tracker
+                {hub ? ', with their test cases' : ''}. Items in a release, or planned for one, must be taken out of it first.
+              </p>
+            </TrashForm>
+          )}
           <div className="filters">
             <label>
               Search

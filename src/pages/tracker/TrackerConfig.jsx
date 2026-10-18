@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useOutletContext, useParams } from 'react-router-dom'
+import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { fieldKeyFromLabel, loadMembers, loadTracker } from '../../lib/trackers'
 import { ACTION_LABELS, FIELD_TYPE_LABELS, REVIEW_MEANINGS, REVIEW_ROLES, ROLE_LABELS } from '../../lib/labels'
 import FieldInput from '../../components/FieldInput'
+import TrashForm from '../../components/TrashForm'
 
 // Tracker configuration (Admins): fields, workflow states and moves, review gates,
 // and state actions. Every change is recorded in the audit trail by the database.
@@ -14,6 +15,8 @@ export default function TrackerConfig() {
   const [members, setMembers] = useState([])
   const [error, setError] = useState('')
   const [tab, setTab] = useState('fields')
+  const [deleting, setDeleting] = useState(false)
+  const navigate = useNavigate()
 
   const fetchConfig = useCallback(async () => {
     const [c, m] = await Promise.all([loadTracker(project.id, typeKey), loadMembers(project.id)])
@@ -101,6 +104,33 @@ export default function TrackerConfig() {
       {tab === 'fields' && <FieldsConfig config={config} run={run} />}
       {tab === 'workflow' && <WorkflowConfig config={config} run={run} />}
       {tab === 'actions' && <ActionsConfig config={config} run={run} members={members} />}
+
+      {can('trash.manage') && (
+        <section className="stack-sm delete-zone">
+          <h3>Delete this tracker</h3>
+          {deleting ? (
+            <TrashForm
+              title={`Delete the ${typeKey} tracker?`}
+              submitLabel="Delete tracker"
+              onDelete={(reason) => supabase.rpc('trash_tracker', { p_tracker: config.tracker.id, p_reason: reason })}
+              onDone={() => navigate(`/projects/${project.id}/trackers`)}
+              onCancel={() => setDeleting(false)}
+            >
+              <p>
+                The tracker and all of its items leave the project
+                {config.tracker.pair_tracker_id ? ', together with the paired requirements or test cases tracker' : ''}.
+                Items still in a release, or planned for one, must be taken out of it first.
+              </p>
+            </TrashForm>
+          ) : (
+            <div>
+              <button type="button" className="danger-outline" onClick={() => setDeleting(true)}>
+                Delete tracker…
+              </button>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   )
 }

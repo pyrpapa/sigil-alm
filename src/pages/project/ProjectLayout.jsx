@@ -91,6 +91,7 @@ export default function ProjectLayout({ session }) {
         <NavLink to="repository">Repository</NavLink>
         <NavLink to="members">Members</NavLink>
         <NavLink to="activity">Activity</NavLink>
+        <NavLink to="trash">Trash</NavLink>
       </nav>
 
       <Outlet context={{ project, setProject, can, role, reload: load, userId }} />

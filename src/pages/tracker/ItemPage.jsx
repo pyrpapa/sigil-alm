@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, Navigate, useOutletContext, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { isEmpty, loadErs, loadLinkTypes, loadMembers, loadReleases, loadTracker, releaseLabel } from '../../lib/trackers'
 import { ACTION_LABELS, formatTimestamp, ROLE_LABELS } from '../../lib/labels'
 import FieldValue from '../../components/FieldValue'
+import TrashForm from '../../components/TrashForm'
 import ItemForm from './ItemForm'
 import StateBadge from './StateBadge'
 
@@ -195,6 +196,8 @@ function ItemView({ ctx, data, pairData, reload }) {
   const { typeKey } = useParams()
   const [editing, setEditing] = useState(null) // 'main' | 'pair'
   const [tab, setTab] = useState('details')
+  const [trashing, setTrashing] = useState(false)
+  const navigate = useNavigate()
 
   const { config, item, members, links, linkTypes, releases, erContext } = data
   const d = useMemo(() => describeItem(data, userId), [data, userId])
@@ -231,8 +234,29 @@ function ItemView({ ctx, data, pairData, reload }) {
             {d.state.is_final && ' · approved'} · Updated {formatTimestamp(item.updated_at)}
           </span>
         </div>
-        <StateBadge state={d.state} />
+        <div className="actions">
+          <StateBadge state={d.state} />
+          {can('trash.manage') && !trashing && (
+            <button type="button" className="secondary small" onClick={() => setTrashing(true)}>
+              Move to trash…
+            </button>
+          )}
+        </div>
       </div>
+
+      {trashing && (
+        <TrashForm
+          title={`Move ${item.item_key}${paired ? ` and ${pairData.item.item_key}` : ''} to the trash?`}
+          onDelete={(reason) => supabase.rpc('trash_item', { p_item: item.id, p_reason: reason })}
+          onDone={() => navigate(base)}
+          onCancel={() => setTrashing(false)}
+        >
+          <p>
+            {paired ? 'The requirement and its test case leave' : 'The item leaves'} the tracker with all versions, signatures and
+            links. {isRelease ? 'A release must be empty, with nothing planned for it.' : 'If it is in a release, or planned for one, take it out first.'}
+          </p>
+        </TrashForm>
+      )}
 
       {paired && !jointNow ? (
         <PairAuthoring ctx={ctx} data={data} d={d} pairData={pairData} p={p} reload={reload} onEdit={setEditing} />
@@ -809,6 +833,9 @@ function ItemDetails({ ctx, data, d, heading, onMoved, hideReleases = false }) {
                     <span key={pin.release_id} className="release-pin">
                       <Link to={`/projects/${project.id}/trackers/REL/${r?.item_key}`}>{releaseLabel(r)}</Link>{' '}
                       <span className="muted small">version {d.revisionNumber[pin.revision_id]}</span>
+                      {r && !r.complete && can('releases.manage') && (
+                        <RemoveFromRelease item={item} release={r} paired={Boolean(item.pair_item_id)} onRemoved={onMoved} />
+                      )}
                     </span>
                   ))
               )}
@@ -823,6 +850,59 @@ function ItemDetails({ ctx, data, d, heading, onMoved, hideReleases = false }) {
         </div>
       </dl>
     </section>
+  )
+}
+
+// Take this item (and its pair partner) out of a release that is still open.
+function RemoveFromRelease({ item, release, paired, onRemoved }) {
+  const [open, setOpen] = useState(false)
+  const [reason, setReason] = useState('')
+  const [error, setError] = useState('')
+  if (!open)
+    return (
+      <button
+        type="button"
+        className="link-button small"
+        aria-label={`Remove ${item.item_key} from ${release.item_key}`}
+        onClick={() => setOpen(true)}
+      >
+        Remove
+      </button>
+    )
+  return (
+    <form
+      className="form-inline"
+      onSubmit={async (e) => {
+        e.preventDefault()
+        setError('')
+        const { error } = await supabase.rpc('unpin_from_release', {
+          p_release: release.id,
+          p_item: item.id,
+          p_reason: reason.trim(),
+        })
+        if (error) setError(error.message)
+        else onRemoved()
+      }}
+    >
+      <label>
+        Reason for taking {item.item_key}
+        {paired ? ' and its test case' : ''} out of {release.item_key} (required)
+        <input value={reason} onChange={(e) => setReason(e.target.value)} required maxLength={500} autoFocus />
+      </label>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="actions">
+        <button type="submit" className="small" disabled={!reason.trim()}>
+          Remove from release
+        </button>
+        <button type="button" className="secondary small" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
   )
 }
 

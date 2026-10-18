@@ -39,16 +39,18 @@ export default function ProjectActivity() {
         const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', [...ids])
         setNames(Object.fromEntries((profiles ?? []).map((p) => [p.id, p.full_name || 'Unnamed user'])))
       }
-      const [{ data: items }, { data: trackers }, { data: revisions }] = await Promise.all([
+      const [{ data: items }, { data: trackers }, { data: revisions }, { data: trash }] = await Promise.all([
         supabase.from('items').select('id, item_key').eq('project_id', project.id),
         supabase.from('trackers').select('id, type_key').eq('project_id', project.id),
         supabase.from('item_revisions').select('id, item_id, revision').eq('project_id', project.id),
+        supabase.from('trash_entries').select('id, label').eq('project_id', project.id),
       ])
       const itemKeys = Object.fromEntries((items ?? []).map((i) => [i.id, i.item_key]))
       setKeys({
         items: itemKeys,
         trackers: Object.fromEntries((trackers ?? []).map((t) => [t.id, t.type_key])),
         revisions: Object.fromEntries((revisions ?? []).map((r) => [r.id, { key: itemKeys[r.item_id], revision: r.revision }])),
+        trash: Object.fromEntries((trash ?? []).map((t) => [t.id, t.label])),
       })
       setEntries(data)
       setLoading(false)
@@ -121,8 +123,11 @@ export default function ProjectActivity() {
 }
 
 // An item's pointers to its latest and approved versions change alongside the version's own entries.
+// Moving things to and from the trash is shown once, by its trash entry.
 const isPointerOnly = (e) =>
-  e.table_name === 'items' && e.action === 'UPDATE' && e.changed_fields?.every((f) => f === 'head_revision_id' || f === 'approved_revision_id')
+  e.action === 'UPDATE' &&
+  ((e.table_name === 'items' && e.changed_fields?.every((f) => f === 'head_revision_id' || f === 'approved_revision_id')) ||
+    (['items', 'folders', 'trackers'].includes(e.table_name) && e.changed_fields?.every((f) => f === 'trash_entry_id')))
 
 const CONFIG_TABLES = new Set(['role_permissions', 'trackers', 'tracker_fields', 'tracker_states', 'tracker_transitions', 'tracker_state_actions'])
 
@@ -182,6 +187,11 @@ function describe(e, names, keys) {
     const r = keys.revisions[v.revision_id] ?? {}
     return `${v.signer_name ?? 'Someone'} signed ${keys.items[v.item_id] ?? 'an item'} as ${v.meaning} (${v.state_name}, version ${r.revision ?? '?'})`
   }
+  if (e.table_name === 'trash_entries') {
+    const label = v.label ?? keys.trash?.[e.record_id] ?? 'something'
+    if (e.action === 'INSERT') return `Deleted ${label} to the trash`
+    if (e.changed_fields?.includes('restored_at')) return `Restored ${label} from the trash`
+  }
   if (e.table_name === 'trackers') {
     if (e.action === 'INSERT') return `Set up the ${v.type_key} tracker`
     return `Changed the ${keys.trackers[e.record_id] ?? ''} tracker`
@@ -210,6 +220,7 @@ function formatValue(field, value) {
 const HIDDEN_FIELDS = new Set([
   'values', 'version', 'version_by', 'state_id', 'state_entered_at', 'folder_id', 'position', 'next_number',
   'title', 'content_version', 'content_by', 'assignee', 'approved_at', 'head_revision_id', 'approved_revision_id',
+  'restored_at', 'restored_by', 'restore_reason', 'trash_entry_id',
 ])
 
 function Changes({ entry }) {

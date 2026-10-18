@@ -124,3 +124,8 @@ During review, System displays what changed since the last approved version",Tes
 SRS-058,Workflow,Assignee,"System assigns each open version to its author by default
 User is able to reassign an open version to a project member who can edit items
 System records each reassignment in the audit trail",Test (automated),"Rejected work needs a clear owner.",Draft
+SRS-059,Records,Trash and restore,"User with the trash permission is able to delete a tracker, folder or item to the project trash, giving a reason
+System keeps everything deleted, with its versions, signatures, links and history, and never destroys it
+User with the trash permission is able to restore a deleted tracker, folder or item with everything it took with it
+System refuses to delete an item while it is in a release or planned for one
+System records each deletion and restore, with its reason, in the audit trail",Test (automated),"Records are never lost, but mistakes and obsolete records can be removed from view.",Draft
