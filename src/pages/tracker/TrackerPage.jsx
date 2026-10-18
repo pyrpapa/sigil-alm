@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { loadMembers, loadReleases, loadTracker } from '../../lib/trackers'
+import { loadLinkTypes, loadMembers, loadReleases, loadTracker } from '../../lib/trackers'
+import { downloadCsv, exportItems } from '../../lib/csvExport'
 import { formatTimestamp } from '../../lib/labels'
 import ItemForm from './ItemForm'
 import StateBadge from './StateBadge'
@@ -46,6 +47,7 @@ export default function TrackerPage() {
   const [search, setSearch] = useState('')
   const [releaseFilter, setReleaseFilter] = useState('')
   const [newFolder, setNewFolder] = useState(null)
+  const [exporting, setExporting] = useState(false)
   const [deletingFolder, setDeletingFolder] = useState(null)
 
   const reload = useCallback(
@@ -92,6 +94,29 @@ export default function TrackerPage() {
   )
   const base = `/projects/${project.id}/trackers/${typeKey}`
 
+  // Export the items shown (with the current folder, state, release and search filters).
+  async function exportShown() {
+    setExporting(true)
+    setError('')
+    try {
+      const text = await exportItems({
+        config,
+        items: shown,
+        members,
+        states: config.states,
+        folders: config.folders,
+        partners,
+        linkTypes: await loadLinkTypes(project.id),
+        releases,
+      })
+      const date = new Date().toISOString().slice(0, 10)
+      downloadCsv(text, `${project.name}-${config.tracker.type_key}-${date}.csv`.replace(/[^\w.-]+/g, '_'))
+    } catch (e) {
+      setError(e.message)
+    }
+    setExporting(false)
+  }
+
   async function addFolder(e) {
     e.preventDefault()
     const { error } = await supabase.rpc('create_folder', { p_tracker: config.tracker.id, p_name: newFolder.trim() })
@@ -116,6 +141,9 @@ export default function TrackerPage() {
             </Link>
           )}
           {secondary && <span className="muted small">Test cases are created with their requirement.</span>}
+          <button type="button" className="secondary" onClick={exportShown} disabled={exporting || shown.length === 0}>
+            {exporting ? 'Exporting…' : `Export CSV (${shown.length})`}
+          </button>
           {can('items.create') && !secondary && (
             <Link className="button secondary-link" to={`${base}/import`}>
               Import CSV
