@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useOutletContext, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { loadLinkTypes, loadMembers, loadTracker } from '../../lib/trackers'
-import { prepareImport } from '../../lib/csvImport'
+import { isItemKey, prepareImport } from '../../lib/csvImport'
 
 // Import items from CSV (SRS-047): choose a file, check the preview, then import.
 // The preview is the database's own check, so what it shows is exactly what the
@@ -43,7 +43,7 @@ export default function ImportPage() {
   async function runImport(rows, commit, name) {
     const { data, error } = await supabase.rpc('import_items', {
       p_tracker: config.tracker.id,
-      p_rows: rows.map((r) => ({ id: r.id, title: r.title, folder: r.folder, release: r.release, values: r.values, links: r.links })),
+      p_rows: rows.map((r) => ({ title: r.title, folder: r.folder, release: r.release, values: r.values, links: r.links })),
       p_commit: commit,
       p_source: name,
     })
@@ -63,11 +63,38 @@ export default function ImportPage() {
     if (prepared.error) return
     setBusy(true)
     try {
+      await resolveTitles(prepared.rows)
+      setFile({ name: chosen.name, ...prepared })
       setPreview(await runImport(prepared.rows, false, chosen.name))
     } catch (err) {
       setError(err.message)
     }
     setBusy(false)
+  }
+
+  // Links given by title become the item's ID (titles are matched ignoring case).
+  async function resolveTitles(rows) {
+    const byTitle = {}
+    const types = [...new Set(rows.flatMap((r) => r.links.filter((l) => !isItemKey(l.target)).map((l) => l.type)))]
+    for (const typeKeyOfLink of types) {
+      const target = setup.linkTypes.find((t) => t.key === typeKeyOfLink)?.target_type_key
+      if (!target || byTitle[target]) continue
+      const { data: tracker } = await supabase.from('trackers').select('id').eq('project_id', project.id).eq('type_key', target).maybeSingle()
+      const { data: items } = tracker ? await supabase.from('item_heads').select('item_key, title').eq('tracker_id', tracker.id) : { data: [] }
+      const map = {}
+      for (const i of items ?? []) {
+        const t = i.title.trim().toLowerCase()
+        map[t] = map[t] && map[t] !== i.item_key ? null : i.item_key // null: title used twice
+      }
+      byTitle[target] = map
+    }
+    for (const r of rows)
+      r.links = r.links.map((l) => {
+        if (isItemKey(l.target)) return l
+        const target = setup.linkTypes.find((t) => t.key === l.type)?.target_type_key
+        const key = byTitle[target]?.[l.target.trim().toLowerCase()]
+        return key ? { ...l, target: key, title: l.target } : l
+      })
   }
 
   async function handleImport() {
@@ -87,9 +114,6 @@ export default function ImportPage() {
   const autoKeys = new Set(config.actions.map((a) => a.field_key))
   const importable = config.fields.filter((f) => !f.is_retired && f.field_type !== 'steps' && !autoKeys.has(f.key))
   const outgoing = setup.linkTypes.filter((t) => t.source_type_key === typeKey && !t.is_retired)
-  // Every row refused only because its ID is taken: the tracker already has items.
-  const alreadyHasItems =
-    results.length > 0 && results.every((r, i) => r.errors.length === 1 && file.rows[i].id && r.errors[0].startsWith('The file says'))
   const folderCount = new Set((file?.rows ?? []).map((r) => r.folder).filter(Boolean)).size
 
   return (
@@ -113,7 +137,7 @@ export default function ImportPage() {
         <section className="card stack-sm">
           <p className="small">
             The first row names the columns: <code>title</code> (required), this tracker's fields by key or label (
-            {importable.map((f) => f.key).join(', ')}), and optionally <code>id</code>, <code>folder</code>
+            {importable.map((f) => f.key).join(', ')}), and optionally <code>folder</code>
             {typeKey !== 'REL' && (
               <>
                 , <code>release</code>
@@ -121,12 +145,11 @@ export default function ImportPage() {
             )}
             {outgoing.length > 0 && (
               <>
-                , and link columns ({outgoing.map((t) => `${t.key} or linked_${t.target_type_key.toLowerCase()}`).join(', ')}, IDs
-                separated by <code>;</code>)
+                , and link columns ({outgoing.map((t) => `${t.key} or linked_${t.target_type_key.toLowerCase()}`).join(', ')}: the
+                IDs or titles of the items to link, separated by <code>;</code>)
               </>
             )}
-            . If the file has an <code>id</code> column, each ID must match the one Sigil assigns, so import into an empty
-            tracker with rows in ID order.
+            . Sigil numbers new items itself, after the tracker's existing items; an <code>id</code> column is ignored.
           </p>
           <label className="file-label">
             Choose a CSV file
@@ -166,15 +189,7 @@ export default function ImportPage() {
       {preview && !done && (
         <>
           <div className={`review-status ${preview.error_count ? 'pending' : 'done'}`} role="status">
-            {alreadyHasItems ? (
-              <>
-                <strong>
-                  {typeKey} already has items, so the IDs in this file would not match ({file.rows[0].id} would become{' '}
-                  {results[0].item_key}).
-                </strong>{' '}
-                Was this file imported already? Nothing has been created.
-              </>
-            ) : preview.error_count ? (
+            {preview.error_count ? (
               <>
                 <strong>
                   {preview.error_count} of {results.length} rows have problems.
@@ -218,7 +233,6 @@ export default function ImportPage() {
                       <td className="muted">{row.line}</td>
                       <td className="nowrap">
                         <span className="prefix">{r.item_key}</span>
-                        {row.id && row.id.toUpperCase() !== r.item_key && <div className="small muted">file: {row.id}</div>}
                       </td>
                       <td>{row.title || <span className="muted">(none)</span>}</td>
                       <td>{row.folder}</td>

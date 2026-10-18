@@ -41,12 +41,6 @@ test('CSV import with preview, then links on both items', { tag: ['@SRS-019', '@
   await page.getByRole('button', { name: 'Import 2 items' }).click()
   await expect(page.getByRole('status')).toContainText('Imported 2 items')
 
-  // The same file again is refused: no duplicates
-  await page.goto(`${trackers}/SRS/import`)
-  await page.getByLabel('Choose a CSV file').setInputFiles(csv('srs.csv', SRS_CSV))
-  await expect(page.getByRole('status')).toContainText('SRS already has items')
-  await expect(page.getByRole('button', { name: /^Import \d+ items/ })).toHaveCount(0)
-
   // Import RISK with links to both requirements
   await page.goto(`${trackers}/RISK/import`)
   await page.getByLabel('Choose a CSV file').setInputFiles(csv('risk.csv', RISK_CSV))

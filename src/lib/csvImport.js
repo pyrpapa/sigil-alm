@@ -51,7 +51,7 @@ export function mapColumns(headers, config, linkTypes) {
   const outgoing = linkTypes.filter((t) => t.source_type_key === config.tracker.type_key && !t.is_retired)
   return headers.map((header) => {
     const h = norm(header)
-    if (h === 'id') return { header, kind: 'id', label: 'ID', note: 'Checked against the ID each row gets' }
+    if (h === 'id') return { header, kind: 'ignore', label: 'ID', note: 'Ignored: Sigil numbers new items itself' }
     if (h === 'title') return { header, kind: 'title' }
     if (h === 'folder') return { header, kind: 'folder', note: 'Folders are created if needed' }
     if (h === 'release' && config.tracker.type_key !== 'REL')
@@ -120,6 +120,18 @@ function convert(field, raw, members) {
   }
 }
 
+// Link targets are separated by ; or new lines. Each is an ID (SRS-004) or an item's
+// title; a list of IDs may also be separated by commas.
+const KEY = /^[A-Za-z]+-\d+$/
+export function splitTargets(raw) {
+  return raw
+    .split(/[;\n]/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .flatMap((t) => (t.split(',').every((k) => KEY.test(k.trim())) ? t.split(',').map((k) => k.trim()) : [t]))
+}
+export const isItemKey = (t) => KEY.test(t)
+
 // Build the rows sent to import_items.
 export function buildImportRows(table, columns, members = []) {
   return table.map((cells, index) => {
@@ -127,17 +139,12 @@ export function buildImportRows(table, columns, members = []) {
     columns.forEach((col, i) => {
       const raw = (cells[i] ?? '').replace(/\r\n?/g, '\n').trim()
       if (raw === '') return
-      if (col.kind === 'id') row.id = raw
-      else if (col.kind === 'title') row.title = raw
+      if (col.kind === 'title') row.title = raw
       else if (col.kind === 'folder') row.folder = raw
       else if (col.kind === 'release') row.release = raw
       else if (col.kind === 'field') row.values[col.field.key] = convert(col.field, raw, members)
       else if (col.kind === 'link')
-        raw
-          .split(/[;,\n]/)
-          .map((t) => t.trim())
-          .filter(Boolean)
-          .forEach((target) => row.links.push({ type: col.linkType.key, target }))
+        splitTargets(raw).forEach((target) => row.links.push({ type: col.linkType.key, target }))
     })
     return row
   })
