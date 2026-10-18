@@ -20,6 +20,11 @@ export default function TrackerConfig() {
 
   const fetchConfig = useCallback(async () => {
     const [c, m] = await Promise.all([loadTracker(project.id, typeKey), loadMembers(project.id)])
+    // A requirement tracker and its test case tracker are configured from one page.
+    if (c?.tracker.pair_tracker_id) {
+      const { data } = await supabase.from('trackers').select('type_key').eq('id', c.tracker.pair_tracker_id).maybeSingle()
+      c.partner = data
+    }
     return { c, m }
   }, [project.id, typeKey])
 
@@ -69,15 +74,39 @@ export default function TrackerConfig() {
   if (!can('trackers.configure'))
     return <p>Only project Admins can configure trackers. You can view the workflow on any item.</p>
 
-  const base = `/projects/${project.id}/trackers/${typeKey}`
+  const trackers = `/projects/${project.id}/trackers`
+  const paired = Boolean(config.partner)
+  const primary = config.tracker.is_pair_primary
+  const hubKey = paired ? (primary ? typeKey : config.partner.type_key) : typeKey
+  const base = `${trackers}/${hubKey}`
 
   return (
     <div className="stack">
       <div className="card-head">
         <h2>
-          <Link to={`/projects/${project.id}/trackers`}>Trackers</Link> / <Link to={base}>{typeKey}</Link> / Configuration
+          <Link to={trackers}>Trackers</Link> / <Link to={base}>{paired ? `${hubKey} Requirements & Test Cases` : typeKey}</Link> /
+          Configuration
         </h2>
       </div>
+
+      {paired && (
+        <>
+          <nav className="tabs pair-config-tabs" aria-label="Which record">
+            {[
+              [primary ? typeKey : config.partner.type_key, 'Requirement'],
+              [primary ? config.partner.type_key : typeKey, 'Test case'],
+            ].map(([key, label]) => (
+              <Link key={key} to={`${trackers}/${key}/config`} className={`tab${key === typeKey ? ' active' : ''}`}>
+                {label} ({key})
+              </Link>
+            ))}
+          </nav>
+          <p className="muted small">
+            A requirement and its test case are separate records with their own fields, each with its own workflow up to Ready for
+            Review. From there they move together, matched by state name: review stages, Needs Work and Approved must be named the same on both.
+          </p>
+        </>
+      )}
       <p className="muted small">
         Changes apply immediately and are recorded in the project's Activity. Fields and states are retired rather than deleted, so
         existing items keep their history.

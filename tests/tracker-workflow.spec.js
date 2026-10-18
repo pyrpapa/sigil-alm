@@ -75,10 +75,10 @@ test(
     await expect(page.getByText('SRS-001.1 has no test step verifying it')).toBeVisible()
     await page.getByRole('region', { name: 'Workflow of TC-001' }).getByRole('button', { name: 'Edit' }).click()
     await page.getByLabel('Execution type').selectOption('Manual')
-    await page.getByRole('button', { name: 'Add step', exact: true }).click()
+    // The test case starts with a step for each ER
+    await expect(page.getByLabel('ER verified by step 1')).toHaveValue('SRS-001.1')
     await page.locator('.step-row').nth(0).getByLabel(/Action/).fill('Open the app signed out')
     await page.locator('.step-row').nth(0).getByLabel('Expected result').fill('The sign-in page is shown')
-    await page.getByLabel('ER verified by step 1').selectOption('SRS-001.1')
     await page.getByRole('button', { name: 'Save changes' }).click()
     await expect(page.getByText('1 of 1 ERs covered by test steps')).toBeVisible()
 
@@ -138,10 +138,8 @@ test('Needs Work: reviewer sends the pair back with a reason', { tag: ['@SRS-029
   const itemUrl = page.url()
   await page.getByRole('region', { name: 'Workflow of TC-001' }).getByRole('button', { name: 'Edit' }).click()
   await page.getByLabel('Execution type').selectOption('Manual')
-  await page.getByRole('button', { name: 'Add step', exact: true }).click()
   await page.locator('.step-row').nth(0).getByLabel(/Action/).fill('Archive the project')
   await page.locator('.step-row').nth(0).getByLabel('Expected result').fill('It shows Archived')
-  await page.getByLabel('ER verified by step 1').selectOption('SRS-001.1')
   await page.getByRole('button', { name: 'Save changes' }).click()
   for (const key of ['SRS-001', 'TC-001']) {
     await move(page, key, 'In Progress')
@@ -179,25 +177,25 @@ test('TC steps: documentation and verification steps', { tag: ['@SRS-034', '@SRS
   await page.getByRole('region', { name: 'Workflow of TC-001' }).getByRole('button', { name: 'Edit' }).click()
   await page.getByLabel('Execution type').selectOption('Manual')
 
-  // Step 1: documentation step with two values to record
-  await page.getByRole('button', { name: 'Add documentation step' }).click()
+  // Step 1: the verification step the test case starts with, for the ER
   const steps = page.locator('.step-row')
-  await steps.nth(0).getByLabel(/Action/).fill('Record the test environment')
-  await page.getByLabel('Step 1 value 1').fill('Browser and version')
-  await page.getByRole('button', { name: 'Add value' }).click()
-  await page.getByLabel('Step 1 value 2').fill('Operating system')
+  await expect(steps.nth(0).getByLabel('Expected result')).toHaveValue('The login page shows a Sign in button')
+  await steps.nth(0).getByLabel(/Action/).fill('Open the login page')
+  await steps.nth(0).getByLabel('Expected result').fill('The Sign in button is visible')
 
-  // Step 2: verification step for the ER
-  await page.getByRole('button', { name: 'Add step', exact: true }).click()
-  await steps.nth(1).getByLabel(/Action/).fill('Open the login page')
-  await steps.nth(1).getByLabel('Expected result').fill('The Sign in button is visible')
-  await page.getByLabel('ER verified by step 2').selectOption('SRS-001.1')
+  // Step 2: documentation step with two values to record
+  await page.getByRole('button', { name: 'Add documentation step' }).click()
+  await steps.nth(1).getByLabel(/Action/).fill('Record the test environment')
+  await page.getByLabel('Step 2 value 1').fill('Browser and version')
+  await page.getByRole('button', { name: 'Add value' }).click()
+  await page.getByLabel('Step 2 value 2').fill('Operating system')
   await page.getByRole('button', { name: 'Save changes' }).click()
 
+  await page.getByRole('button', { name: 'Test case TC-001' }).click()
   const table = page.getByRole('table', { name: 'Steps' })
-  await expect(table.getByRole('row').nth(1)).toContainText('Record the test environment')
-  await expect(table.getByRole('row').nth(1)).toContainText('Browser and version')
-  await expect(table.getByRole('row').nth(1)).toContainText('Operating system')
-  await expect(table.getByRole('row').nth(2)).toContainText('SRS-001.1')
-  await expect(table.getByRole('row').nth(2)).toContainText('The Sign in button is visible')
+  await expect(table.getByRole('row').nth(1)).toContainText('SRS-001.1')
+  await expect(table.getByRole('row').nth(1)).toContainText('The Sign in button is visible')
+  await expect(table.getByRole('row').nth(2)).toContainText('Record the test environment')
+  await expect(table.getByRole('row').nth(2)).toContainText('Browser and version')
+  await expect(table.getByRole('row').nth(2)).toContainText('Operating system')
 })

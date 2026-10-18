@@ -195,7 +195,8 @@ function ItemView({ ctx, data, pairData, reload }) {
   const { project, can, userId } = ctx
   const { typeKey } = useParams()
   const [editing, setEditing] = useState(null) // 'main' | 'pair'
-  const [tab, setTab] = useState('details')
+  // A requirement's page has a tab for it and one for its test case.
+  const [tab, setTab] = useState(() => (window.location.hash === '#test-case' ? 'test-case' : 'details'))
   const [trashing, setTrashing] = useState(false)
   const navigate = useNavigate()
 
@@ -206,10 +207,6 @@ function ItemView({ ctx, data, pairData, reload }) {
   const isRelease = typeKey === 'REL'
   const paired = Boolean(pairData)
   const jointNow = paired && (d.joint(d.state) || d.joint(p.state))
-
-  useEffect(() => {
-    if (window.location.hash === '#test-case') document.getElementById('test-case')?.scrollIntoView()
-  }, [])
 
   return (
     <div className="stack">
@@ -226,7 +223,17 @@ function ItemView({ ctx, data, pairData, reload }) {
           <span className="muted small">
             {paired && (
               <>
-                With test case <a href="#test-case">{pairData.item.item_key}</a> ·{' '}
+                With test case{' '}
+                <a
+                  href="#test-case"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setTab('test-case')
+                  }}
+                >
+                  {pairData.item.item_key}
+                </a>{' '}
+                ·{' '}
               </>
             )}
             Version {item.revision}
@@ -295,7 +302,12 @@ function ItemView({ ctx, data, pairData, reload }) {
 
       <nav className="tabs" aria-label="Item sections">
         {[
-          ['details', 'Details'],
+          ...(paired
+            ? [
+                ['details', `Requirement ${item.item_key}`],
+                ['test-case', `Test case ${pairData.item.item_key}`],
+              ]
+            : [['details', 'Details']]),
           ['signatures', `Signatures (${data.signatures.length + (pairData?.signatures.length ?? 0)})`],
           ['versions', `Versions (${data.revisions.length})`],
           ['history', 'History'],
@@ -306,29 +318,32 @@ function ItemView({ ctx, data, pairData, reload }) {
         ))}
       </nav>
 
-      {tab === 'details' && (d.state.review_role || d.state.is_ready) && (
-        <>
-          <ChangesSince data={data} d={d} />
-          {paired && <ChangesSince data={pairData} d={p} />}
-        </>
+      {tab === 'details' && (d.state.review_role || d.state.is_ready) && <ChangesSince data={data} d={d} />}
+      {tab === 'test-case' && (p.state.review_role || p.state.is_ready) && <ChangesSince data={pairData} d={p} />}
+
+      {tab === 'test-case' && (
+        <section id="test-case" className="stack-sm">
+          <div className="card-head">
+            <h3>
+              Test case <span className="prefix">{pairData.item.item_key}</span> {pairData.item.title}
+            </h3>
+            <div className="actions">
+              <span className="muted small">Version {pairData.item.revision}</span>
+              <StateBadge state={p.state} />
+              {can('items.edit') && !p.state.locks_item && (
+                <button type="button" className="secondary small" onClick={() => setEditing('pair')}>
+                  Edit test case
+                </button>
+              )}
+            </div>
+          </div>
+          <ItemDetails ctx={ctx} data={pairData} d={p} onMoved={reload} hideReleases />
+        </section>
       )}
 
       {tab === 'details' && (
         <>
-          <ItemDetails ctx={ctx} data={data} d={d} heading={paired ? 'Requirement' : null} onMoved={reload} />
-          {paired && (
-            <section id="test-case" className="stack-sm">
-              <div className="card-head">
-                <h3>
-                  Test case <span className="prefix">{pairData.item.item_key}</span> {pairData.item.title}
-                </h3>
-                <span className="muted small">
-                  Version {pairData.item.revision} · <StateBadge state={p.state} />
-                </span>
-              </div>
-              <ItemDetails ctx={ctx} data={pairData} d={p} onMoved={reload} hideReleases />
-            </section>
-          )}
+          <ItemDetails ctx={ctx} data={data} d={d} onMoved={reload} />
           {isRelease ? (
             <ReleaseContents
               project={project}

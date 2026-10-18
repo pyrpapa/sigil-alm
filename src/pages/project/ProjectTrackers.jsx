@@ -80,11 +80,6 @@ export default function ProjectTrackers() {
                   Configure fields and workflow
                 </Link>
               )}
-              {pair && can('trackers.configure') && (
-                <Link to={`${pair.type_key}/config`} className="small config-link">
-                  Configure test case fields
-                </Link>
-              )}
             </li>
           )
         })}

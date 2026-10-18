@@ -116,3 +116,6 @@ export function stepProblems(steps) {
   })
   return problems
 }
+
+// A starting step for each ER: the expected result is the ER, the action is left to the author.
+export const stepsForErs = (ers) => ers.map((e) => ({ action: '', expected: e.text, er: e.key }))

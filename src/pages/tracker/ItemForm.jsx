@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import FieldInput from '../../components/FieldInput'
-import { cleanSteps, isEmpty, stepProblems } from '../../lib/trackers'
+import { cleanSteps, isEmpty, stepProblems, stepsForErs } from '../../lib/trackers'
 
 // Generated from the tracker's field configuration (SRS-016). Used to create and to edit.
 export default function ItemForm({ config, members, releases = [], item = null, context = {}, requireReason = false, onCancel, onSaved }) {
@@ -10,7 +10,13 @@ export default function ItemForm({ config, members, releases = [], item = null, 
   const fields = config.fields.filter((f) => !autoKeys.has(f.key) && (!f.is_retired || !isEmpty(item?.values?.[f.key])))
   const autoLabels = config.fields.filter((f) => autoKeys.has(f.key) && !f.is_retired).map((f) => f.label)
   const [title, setTitle] = useState(item?.title ?? '')
-  const [values, setValues] = useState(item?.values ?? {})
+  // A test case with no steps yet starts with one step per ER of its requirement.
+  const [values, setValues] = useState(() => {
+    const v = { ...(item?.values ?? {}) }
+    for (const f of fields)
+      if (f.field_type === 'steps' && isEmpty(v[f.key]) && context.ers?.length) v[f.key] = stepsForErs(context.ers)
+    return v
+  })
   const [folder, setFolder] = useState(item?.folder_id ?? '')
   const [release, setRelease] = useState('')
   const openReleases = releases.filter((r) => !r.complete)

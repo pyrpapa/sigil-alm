@@ -1,5 +1,6 @@
 // Input for one tracker field, chosen by the field's configured type (SRS-016).
 // context: { itemKey, usedNumbers } for ER lists; { ers, currentEr } for test steps.
+import { stepsForErs } from '../lib/trackers'
 export default function FieldInput({ field, value, onChange, members = [], context = {} }) {
   const id = `field-${field.key}`
   const label = (
@@ -141,6 +142,8 @@ function StatementsEditor({ statements, onChange, itemKey, usedNumbers }) {
 
 function StepsEditor({ steps, onChange, ers, currentEr }) {
   const update = (i, patch) => onChange(steps.map((s, j) => (j === i ? { ...s, ...patch } : s)))
+  // ERs of the requirement that no step verifies yet.
+  const uncovered = ers.filter((e) => !steps.some((s) => s.er === e.key))
   const move = (i, delta) => {
     const next = [...steps]
     const [s] = next.splice(i, 1)
@@ -220,6 +223,11 @@ function StepsEditor({ steps, onChange, ers, currentEr }) {
         )
       })}
       <div className="actions">
+        {uncovered.length > 0 && steps.length > 0 && (
+          <button type="button" className="small" onClick={() => onChange([...steps, ...stepsForErs(uncovered)])}>
+            Add a step for each ER without one ({uncovered.length})
+          </button>
+        )}
         <button type="button" className="secondary small" onClick={() => onChange([...steps, { action: '', expected: '' }])}>
           Add step
         </button>
