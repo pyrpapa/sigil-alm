@@ -3,6 +3,7 @@ import { Link, useOutletContext, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { loadLinkTypes, loadMembers, loadTracker } from '../../lib/trackers'
 import { isItemKey, prepareImport } from '../../lib/csvImport'
+import UpdateImport from './UpdateImport'
 
 // Import items from CSV (SRS-047): choose a file, check the preview, then import.
 // The preview is the database's own check, so what it shows is exactly what the
@@ -39,6 +40,13 @@ export default function ImportPage() {
 
   const { config } = setup
   const base = `/projects/${project.id}/trackers/${typeKey}`
+  // Test cases are created with their requirement: their CSV updates existing ones.
+  if (config.tracker.pair_tracker_id && !config.tracker.is_pair_primary)
+    return can('items.edit') ? (
+      <UpdateImport config={config} members={setup.members} base={base} typeKey={typeKey} />
+    ) : (
+      <p className="notice">Your role cannot edit items in this project.</p>
+    )
 
   async function runImport(rows, commit, name) {
     const { data, error } = await supabase.rpc('import_items', {

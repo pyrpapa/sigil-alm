@@ -140,7 +140,11 @@ export default function TrackerPage() {
               Configure
             </Link>
           )}
-          {secondary && <span className="muted small">Test cases are created with their requirement.</span>}
+          {secondary && can('items.edit') && (
+            <Link className="button secondary-link" to={`${base}/import`}>
+              Update from CSV
+            </Link>
+          )}
           <button type="button" className="secondary" onClick={exportShown} disabled={exporting || shown.length === 0}>
             {exporting ? 'Exporting…' : `Export CSV (${shown.length})`}
           </button>

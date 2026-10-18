@@ -159,3 +159,83 @@ export function prepareImport(text, config, linkTypes, members) {
   if (!columns.some((c) => c.kind === 'title')) return { error: 'The file needs a "title" column.', columns }
   return { columns, rows: buildImportRows(body, columns, members) }
 }
+
+// Test steps as exported: one step per line, numbered.
+//   1. Open the login page → The Sign in button is visible [SRS-004.1]
+//   2. [Record] Record the test environment → Browser and version; Operating system
+// "->" works as well as "→". A line that does not start with a number continues the
+// step above it.
+export function parseSteps(raw) {
+  const steps = []
+  const problems = []
+  for (const line of raw.split('\n')) {
+    if (!line.trim()) continue
+    const m = line.match(/^\s*\d+[.)]\s*(.*)$/)
+    if (!m) {
+      const last = steps[steps.length - 1]
+      if (!last) problems.push(`"${line.trim()}" is not a numbered step`)
+      else if (last.kind === 'document') last.action += `\n${line.trim()}`
+      else last.expected += `\n${line.trim()}`
+      continue
+    }
+    let text = m[1].trim()
+    const doc = /^\[record\]\s*/i.test(text)
+    if (doc) text = text.replace(/^\[record\]\s*/i, '')
+    let er
+    const erMatch = text.match(/\s*\[([A-Za-z]+-\d+\.\d+)\]\s*$/)
+    if (erMatch) {
+      er = erMatch[1].toUpperCase()
+      text = text.slice(0, erMatch.index)
+    }
+    const [action, ...rest] = text.split(/\s*(?:→|->)\s*/)
+    const second = rest.join(' → ')
+    if (doc)
+      steps.push({
+        kind: 'document',
+        action: action.trim(),
+        fields: second.split(';').map((f) => f.trim()).filter(Boolean),
+        ...(er ? { er } : {}),
+      })
+    else steps.push({ action: action.trim(), expected: second.trim(), ...(er ? { er } : {}) })
+  }
+  return { steps, problems }
+}
+
+// Update existing items from a file exported by Sigil (or one like it): the id column
+// says which item each row changes; title and field columns are applied; the rest
+// (folder, state, version, links...) is ignored. Fields not in the file keep their values.
+export function prepareUpdate(text, config, members) {
+  const table = parseCsv(text)
+  if (table.length < 2) return { error: 'The file needs a header row and at least one row of data.' }
+  const [headers, ...body] = table
+  const fields = config.fields.filter((f) => !f.is_retired)
+  const autoKeys = new Set(config.actions?.map((a) => a.field_key) ?? [])
+  const columns = headers.map((header) => {
+    const h = norm(header)
+    if (h === 'id') return { header, kind: 'key' }
+    if (h === 'title') return { header, kind: 'title' }
+    const field = fields.find((f) => f.key === h || norm(f.label) === h)
+    if (field && !autoKeys.has(field.key)) return { header, kind: 'field', field }
+    return { header, kind: 'ignore' }
+  })
+  if (!columns.some((c) => c.kind === 'key')) return { error: 'The file needs an "id" column saying which item each row updates.' }
+  const rows = body
+    .filter((cells) => cells.some((c) => c.trim()))
+    .map((cells, index) => {
+      const row = { line: index + 2, values: {}, problems: [] }
+      columns.forEach((col, i) => {
+        const raw = (cells[i] ?? '').replace(/\r\n?/g, '\n').trim()
+        if (col.kind === 'key') row.key = raw.toUpperCase()
+        else if (col.kind === 'title') row.title = raw
+        else if (col.kind === 'field') {
+          if (col.field.field_type === 'steps') {
+            const { steps, problems } = parseSteps(raw)
+            row.values[col.field.key] = steps
+            row.problems.push(...problems)
+          } else row.values[col.field.key] = raw === '' ? null : convert(col.field, raw, members)
+        }
+      })
+      return row
+    })
+  return { columns, rows }
+}
