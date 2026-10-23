@@ -3,9 +3,15 @@ import { supabase } from '../lib/supabase'
 
 // Sign-in only, no self-registration. Users are created by an admin
 // (Supabase dashboard for now), which is how access is controlled in a GxP tool.
+// A link with ?demo prefills the read-only demo account (Viewer role only;
+// these credentials are public by design).
+const isDemo = new URLSearchParams(window.location.search).has('demo')
+const DEMO_EMAIL = import.meta.env.VITE_DEMO_EMAIL ?? ''
+const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? ''
+
 export default function Login() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState(isDemo ? DEMO_EMAIL : '')
+  const [password, setPassword] = useState(isDemo ? DEMO_PASSWORD : '')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -23,6 +29,10 @@ export default function Login() {
       <form className="card" onSubmit={handleSubmit}>
         <h1>Sigil</h1>
         <p className="muted">The automation-first validation ALM</p>
+
+        {isDemo && (
+          <p className="muted">Read-only demo account, on sample data. Just click Sign in.</p>
+        )}
 
         <label>
           Email

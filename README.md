@@ -2,6 +2,8 @@
 
 **An automation-first validation ALM, built by a tester for testers.**
 
+[Live demo](https://sigil-alm.vercel.app/login?demo)** — signs you in as a read-only Viewer on sample data.
+
 Sigil manages the validation lifecycle (requirements, risk, test cases, test runs, deviations, traceability and e-signatures) and treats automated test results as first-class, signed, traceable evidence. It follows GxP and 21 CFR Part 11 practices; it is not certified or claimed to be compliant.
 
 > Status: early setup (Phase 0.5). Demo data only.
