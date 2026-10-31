@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Outlet } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import ThemeSwitch from './ThemeSwitch'
 
 export default function Layout({ session }) {
   const [profile, setProfile] = useState(null)
@@ -31,6 +32,7 @@ export default function Layout({ session }) {
           <Link to="/account" className="muted" title="Your account">
             {session.user.email}
           </Link>
+          <ThemeSwitch />
           <button type="button" className="secondary" onClick={() => supabase.auth.signOut()}>
             Sign out
           </button>

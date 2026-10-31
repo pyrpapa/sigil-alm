@@ -1,0 +1,30 @@
+name: Keep Supabase awake
+
+# Free Supabase projects pause after a week with no activity. This makes one small
+# read from the cloud database every day so Sigil (and the live demo) stays up.
+# It uses only the public anon key: row-level security means it sees no data
+# (an empty list), but the query still runs in Postgres, which counts as activity.
+
+on:
+  schedule:
+    - cron: '23 10 * * *' # daily, 10:23 UTC (5:23 am Central)
+  workflow_dispatch: # run it by hand from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          test -n "$SUPABASE_URL" && test -n "$SUPABASE_ANON_KEY" || { echo "Add the SUPABASE_URL and SUPABASE_ANON_KEY repository secrets"; exit 1; }
+          # --fail makes the job fail (and GitHub email you) if the database doesn't answer.
+          curl --fail --silent --show-error --retry 3 --retry-delay 10 \
+            "$SUPABASE_URL/rest/v1/projects?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+          echo
+          echo "Supabase answered."

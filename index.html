@@ -5,6 +5,13 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sigil</title>
+    <script>
+      // Apply the saved Light/Dark choice before the page draws (see src/lib/theme.js).
+      try {
+        const t = localStorage.getItem('sigil-theme')
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

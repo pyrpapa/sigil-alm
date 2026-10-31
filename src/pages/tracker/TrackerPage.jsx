@@ -415,6 +415,8 @@ function TrackerList({ data, view, setView, reload }) {
               stateById={stateById}
               folders={listingPair ? [] : folders}
               editors={editors}
+              members={members}
+              releases={releases}
               hub={hub && !listingPair}
               exporting={exporting}
               onExport={() => exportList(selectedShown)}

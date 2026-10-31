@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light dark;
   --bg: #f6f7f9;
   --surface: #ffffff;
   --text: #1c1f24;
@@ -14,7 +15,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #14161a;
     --surface: #1d2025;
     --text: #e8eaed;
@@ -24,6 +25,18 @@
     --accent-text: #0e1016;
     --error: #ff8a80;
   }
+}
+
+/* Chosen in the app's theme switch: same colours, whatever the system says. */
+:root[data-theme='dark'] {
+  --bg: #14161a;
+  --surface: #1d2025;
+  --text: #e8eaed;
+  --muted: #9aa1ab;
+  --border: #30343b;
+  --accent: #7d8cff;
+  --accent-text: #0e1016;
+  --error: #ff8a80;
 }
 
 * {
@@ -215,7 +228,7 @@ button:disabled {
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --good: #6fdd8b;
     --good-bg: #12351f;
     --warn: #f0c060;
@@ -229,6 +242,22 @@ button:disabled {
     --ready: #5fd4cc;
     --ready-bg: #0f3331;
   }
+}
+
+/* Chosen in the app's theme switch: same colours, whatever the system says. */
+:root[data-theme='dark'] {
+  --good: #6fdd8b;
+  --good-bg: #12351f;
+  --warn: #f0c060;
+  --warn-bg: #3a2c0b;
+  --bad: #ff8a80;
+  --bad-bg: #3d1614;
+  --neutral-bg: #262a31;
+  --preview-bg: #1c2140;
+  --info: #8ab4ff;
+  --info-bg: #182844;
+  --ready: #5fd4cc;
+  --ready-bg: #0f3331;
 }
 
 a {
@@ -1649,4 +1678,24 @@ tr.previewing td:first-child {
 
 .list-with-preview.open .optional-col {
   display: none;
+}
+
+.bulk-field-value label,
+.bulk-field-value > * {
+  display: grid;
+  gap: 0.25rem;
+}
+
+/* ---- Theme switch: Light / Dark / System (lib/theme.js) ---- */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+.theme-switch select {
+  padding: 0.3rem 0.4rem;
+  font-size: 0.85rem;
 }
