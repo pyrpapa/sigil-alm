@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useParams } from 'react-router-dom'
+import { Link, NavLink, Outlet, useOutletContext, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { STATUS_LABELS } from '../../lib/labels'
 
 const PROJECT_COLUMNS = 'id, name, system_under_validation, status, planned_start, planned_end, repository_url, created_at, created_by'
 
@@ -24,6 +23,7 @@ export default function ProjectLayout({ session }) {
   const [role, setRole] = useState(null)
   const [state, setState] = useState('loading') // loading | ready | missing | error
   const [error, setError] = useState('')
+  const [reviewCount, setReviewCount] = useState(0)
 
   const apply = useCallback((result) => {
     setState(result.state)
@@ -43,6 +43,23 @@ export default function ProjectLayout({ session }) {
       current = false
     }
   }, [projectId, userId, apply])
+
+  // How many of this project's items wait on me (to sign, or sent back to me), for the tab.
+  const refreshReviews = useCallback(
+    () =>
+      supabase.rpc('my_review_queue').then(({ data }) => setReviewCount((data ?? []).filter((r) => r.project_id === projectId).length)),
+    [projectId],
+  )
+  useEffect(() => {
+    refreshReviews()
+  }, [refreshReviews])
+
+  // The project's name, subtitle and status show in the top bar (Layout), beside the logo.
+  const { setCrumb } = useOutletContext() ?? {}
+  useEffect(() => {
+    if (project && setCrumb) setCrumb({ name: project.name, suv: project.system_under_validation, status: project.status })
+  }, [project, setCrumb])
+  useEffect(() => () => setCrumb?.(null), [setCrumb])
 
   if (state === 'loading') return <p className="muted">Loading project…</p>
   if (state === 'error')
@@ -65,18 +82,6 @@ export default function ProjectLayout({ session }) {
 
   return (
     <section>
-      <nav className="breadcrumb" aria-label="Breadcrumb">
-        <Link to="/">Projects</Link> <span aria-hidden="true">/</span> <span>{project.name}</span>
-      </nav>
-
-      <div className="page-head project-head">
-        <div>
-          <h1>{project.name}</h1>
-          {project.system_under_validation && <div className="muted">{project.system_under_validation}</div>}
-        </div>
-        <span className={`status status-${project.status}`}>{STATUS_LABELS[project.status] ?? project.status}</span>
-      </div>
-
       {archived && (
         <p className="notice" role="status">
           This project is archived. Its records are read-only.
@@ -88,13 +93,21 @@ export default function ProjectLayout({ session }) {
           Overview
         </NavLink>
         <NavLink to="trackers">Trackers</NavLink>
+        <NavLink to="reviews">
+          Reviews
+          {reviewCount > 0 && (
+            <span className="tab-count" aria-label={`${reviewCount} waiting for you`}>
+              {reviewCount}
+            </span>
+          )}
+        </NavLink>
         <NavLink to="repository">Repository</NavLink>
         <NavLink to="members">Members</NavLink>
         <NavLink to="activity">Activity</NavLink>
         <NavLink to="trash">Trash</NavLink>
       </nav>
 
-      <Outlet context={{ project, setProject, can, role, reload: load, userId }} />
+      <Outlet context={{ project, setProject, can, role, reload: load, userId, refreshReviews }} />
     </section>
   )
 }

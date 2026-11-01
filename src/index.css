@@ -1861,8 +1861,11 @@ button.secondary.small {
 }
 
 /* Page */
+/* Content uses the full window with the top bar's gutter, so the logo and the page share
+   one left edge and wide tables get the room. Reading pages (.narrow) keep their measure. */
 .content {
-  max-width: 1200px;
+  max-width: none;
+  margin: 0;
   padding: 24px 32px 40px;
 }
 
@@ -2098,4 +2101,506 @@ a.button {
   text-transform: uppercase;
   color: var(--muted);
   text-align: center;
+}
+
+/* The top bar stays at the top of the window while the page scrolls; anything else that
+   sticks while scrolling sits just below it. */
+:root {
+  --topbar-height: 56px;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+}
+
+html {
+  scroll-padding-top: calc(var(--topbar-height) + 16px);
+}
+
+.bulk-bar {
+  top: calc(var(--topbar-height) + 8px);
+}
+
+.item-preview {
+  top: calc(var(--topbar-height) + 12px);
+  max-height: calc(100vh - var(--topbar-height) - 24px);
+}
+
+.recorder-bar.is-recording {
+  top: calc(var(--topbar-height) + 8px);
+}
+
+#test-case {
+  scroll-margin-top: calc(var(--topbar-height) + 16px);
+}
+
+/* Top bar breadcrumb: Sigil / Projects / <project> <subtitle> <status> */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.topbar-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 13px;
+}
+
+.crumb-sep {
+  color: var(--border-strong);
+}
+
+.crumb-link {
+  color: var(--muted);
+}
+
+.topbar-project {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.topbar-suv {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.topbar-crumbs .status {
+  flex: none;
+}
+
+/* Project pages now start at their tabs */
+.content > section > .tabs:first-child,
+.content > section > .notice:first-child + .tabs {
+  margin-top: 0;
+}
+
+@media (max-width: 900px) {
+  .topbar-suv,
+  .topbar-crumbs .crumb-link,
+  .topbar-crumbs .crumb-link + .crumb-sep {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar-crumbs .status {
+    display: none;
+  }
+}
+
+/* A count on a tab (e.g. Reviews 3) */
+.tab-count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 11px;
+  line-height: 18px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ---- Project Reviews tab ---- */
+.review-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.review-toolbar .tabs {
+  border-bottom: 0;
+  margin: 0;
+}
+
+/* Two-way switch: Waiting on me / Everyone */
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-sunken);
+}
+
+.segmented button {
+  height: var(--control-sm);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.segmented button:hover {
+  color: var(--text);
+}
+
+.segmented button[aria-pressed='true'],
+.segmented button[aria-pressed='true']:hover {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.review-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.review-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* "+ Test Cases · reviewed as pairs" */
+.pair-tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-subtle);
+  color: var(--accent);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.pair-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-sunken);
+}
+
+.pair-join {
+  color: var(--accent);
+  font-size: 12px;
+}
+
+.release-badge {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-decoration: none;
+  vertical-align: middle;
+}
+
+.you-tag {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+tr.is-mine td:first-child {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* Same column widths in every tracker group, so the tables line up */
+.review-group table {
+  table-layout: fixed;
+  width: 100%;
+}
+.review-group .col-key { width: 190px; }
+.review-group .col-state { width: 140px; }
+.review-group .col-release { width: 170px; }
+.review-group .col-who { width: 190px; }
+.review-group .col-since { width: 150px; }
+.review-group .col-actions { width: 240px; }
+.review-group .actions-cell .quick-sign { flex-wrap: wrap; }
+.review-group .actions-cell .quick-sign > span { flex-basis: 100%; white-space: normal; }
+.review-group .actions-cell .quick-sign input { flex: 1; min-width: 0; }
+.review-group td { overflow-wrap: anywhere; }
+.review-group td.nowrap { overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 900px) {
+  .review-group table { table-layout: auto; }
+  .review-group th[class^='col-'] { width: auto; }
+}
+
+/* ---- Reviewing in place: the panel that opens below a row ---- */
+/* No horizontal scroll box around review tables on wide screens, so the bar can stick */
+@media (min-width: 901px) {
+  .review-group > .table-wrap {
+    overflow: visible;
+  }
+}
+
+.review-row {
+  cursor: pointer;
+}
+
+.review-row.is-open td {
+  background: var(--surface-active);
+  border-bottom-color: transparent;
+}
+
+.review-expand > td,
+tbody tr.review-expand:hover > td {
+  padding: 0;
+  background: var(--surface-sunken);
+  cursor: default;
+}
+
+.review-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 20px 0;
+  border-top: 1px solid var(--accent);
+  outline: none;
+  scroll-margin-top: calc(var(--topbar-height) + 60px);
+}
+
+.review-panel h4,
+.review-panel h5 {
+  margin: 0;
+}
+
+.review-panel h4 {
+  font-family: var(--font-display);
+  font-size: 15px;
+}
+
+.review-panel h5 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.review-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.review-sides > div {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 10px);
+  background: var(--surface);
+}
+
+.review-side-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.review-details {
+  margin: 4px 0 0;
+}
+
+.review-checks {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.changed-tag {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ERs lined up with their steps */
+.review-panel .table-wrap {
+  overflow-x: auto;
+}
+
+.er-step-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.er-step-table .col-er {
+  width: 38%;
+}
+
+.er-step-table .col-step-no {
+  width: 96px;
+}
+
+.er-step-table td {
+  vertical-align: top;
+  white-space: normal;
+}
+
+.er-step-table tbody tr:hover td {
+  background: transparent;
+}
+
+.er-cell {
+  border-right: 1px solid var(--border);
+}
+
+.er-cell .er-key {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.warn-cell {
+  color: var(--warn, #e3a008);
+}
+
+tr.is-missing .warn-cell {
+  font-weight: 500;
+}
+
+/* Sign / Send back / Next: stays at the bottom of the screen while the panel is in view */
+.review-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 -20px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 -6px 16px rgb(0 0 0 / 0.18);
+}
+
+.review-bar-links {
+  margin-left: 8px;
+  color: var(--muted);
+}
+
+.review-bar-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.review-bar-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.review-bar-form input[type='password'] {
+  width: 14rem;
+}
+
+.review-reject {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.review-reject .actions .spacer {
+  flex: 1;
+}
+
+@media (max-width: 900px) {
+  .review-sides {
+    grid-template-columns: 1fr;
+  }
+  .review-bar-nav {
+    margin-left: 0;
+  }
+}
+
+/* Narrow screens: each ER above its step */
+@media (max-width: 700px) {
+  .er-step-table,
+  .er-step-table tbody,
+  .er-step-table tr,
+  .er-step-table td {
+    display: block;
+    width: auto;
+  }
+  .er-step-table thead {
+    display: none;
+  }
+  .er-step-table tr {
+    border-bottom: 1px solid var(--border);
+  }
+  .er-cell {
+    border-right: 0;
+  }
+}
+
+/* Phones: each review row becomes a small card; the panel opens full width below it */
+@media (max-width: 700px) {
+  .review-group table,
+  .review-group > .table-wrap > table > tbody,
+  .review-group > .table-wrap > table > tbody > tr,
+  .review-group > .table-wrap > table > tbody > tr > td {
+    display: block;
+    width: auto;
+  }
+  .review-group > .table-wrap > table > thead {
+    display: none;
+  }
+  .review-group td {
+    overflow-wrap: normal;
+  }
+  .review-row {
+    display: grid !important;
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .review-row > td {
+    padding: 0 !important;
+    border: 0 !important;
+  }
+  .review-row > td:first-child {
+    grid-column: 1;
+  }
+  .review-row > td.actions-cell {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .review-row > td:not(:first-child):not(.actions-cell) {
+    grid-column: 1 / -1;
+  }
+  .review-panel {
+    padding: 14px 12px 0;
+  }
+  .review-bar {
+    margin: 0 -12px;
+    padding: 10px 12px;
+  }
 }
