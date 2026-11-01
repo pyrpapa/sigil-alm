@@ -8,41 +8,59 @@ import TrashForm from '../../components/TrashForm'
 import ItemForm from './ItemForm'
 import StateBadge from './StateBadge'
 
-async function fetchItem(projectId, typeKey, itemKey) {
-  const config = await loadTracker(projectId, typeKey)
-  if (!config) return { missing: true }
-  const { data: item, error } = await supabase
-    .from('item_heads')
-    .select('*')
-    .eq('tracker_id', config.tracker.id)
-    .eq('item_key', itemKey)
-    .maybeSingle()
-  if (error) throw error
-  if (!item) return { missing: true }
-  const [members, sigs, revisions, itemAudit, links, linkTypes, editRoles, releases, pins] = await Promise.all([
-    loadMembers(projectId),
-    supabase.from('item_signatures').select('*').eq('item_id', item.id).order('signed_at'),
-    supabase.from('item_revisions').select('*').eq('item_id', item.id).order('revision', { ascending: false }),
-    supabase
-      .from('audit_log')
-      .select('id, occurred_at, table_name, record_id, action, changed_by, changed_fields, old_values, new_values, reason')
-      .eq('table_name', 'items')
-      .eq('record_id', item.id),
-    supabase.rpc('item_link_list', { p_item: item.id }),
-    loadLinkTypes(projectId),
-    supabase.from('role_permissions').select('role').eq('project_id', projectId).eq('permission', 'items.edit'),
-    loadReleases(projectId),
-    supabase.from('release_pins').select('release_id, revision_id').eq('item_id', item.id),
+// Everything the item page shows about one item. Queries run in as few rounds as possible
+// (each round is a trip to the database), and a reload reuses what an action on the item
+// cannot change (tracker configuration, members, link types), so moving an item to its
+// next state updates the page quickly.
+const cacheOf = (d) => (d && !d.missing ? { config: d.config, members: d.members, linkTypes: d.linkTypes } : {})
+
+async function fetchItem(projectId, typeKey, itemKey, cache = {}) {
+  const [config, itemRes] = await Promise.all([
+    cache.config ?? loadTracker(projectId, typeKey),
+    supabase.from('item_heads').select('*').eq('project_id', projectId).eq('item_key', itemKey).maybeSingle(),
   ])
-  for (const r of [sigs, revisions, itemAudit, links, editRoles, pins]) if (r.error) throw r.error
+  if (!config) return { missing: true }
+  if (itemRes.error) throw itemRes.error
+  const item = itemRes.data
+  if (!item || item.tracker_id !== config.tracker.id) return { missing: true }
+
+  const hasStatements = config.fields.some((f) => f.field_type === 'statements' && !f.is_retired)
+  const hasSteps = config.fields.some((f) => f.field_type === 'steps' && !f.is_retired)
+  const [members, sigs, revisions, itemAudit, links, linkTypes, editRoles, releases, pins, coverage, readiness, comments, pair] =
+    await Promise.all([
+      cache.members ?? loadMembers(projectId),
+      supabase.from('item_signatures').select('*').eq('item_id', item.id).order('signed_at'),
+      supabase.from('item_revisions').select('*').eq('item_id', item.id).order('revision', { ascending: false }),
+      supabase
+        .from('audit_log')
+        .select('id, occurred_at, table_name, record_id, action, changed_by, changed_fields, old_values, new_values, reason')
+        .eq('table_name', 'items')
+        .eq('record_id', item.id),
+      supabase.rpc('item_link_list', { p_item: item.id }),
+      cache.linkTypes ?? loadLinkTypes(projectId),
+      supabase.from('role_permissions').select('role').eq('project_id', projectId).eq('permission', 'items.edit'),
+      loadReleases(projectId),
+      supabase.from('release_pins').select('release_id, revision_id').eq('item_id', item.id),
+      hasStatements ? supabase.rpc('er_coverage', { p_item: item.id }) : { data: null },
+      supabase.rpc('item_readiness', { p_item: item.id }),
+      supabase.from('review_comments').select('*').eq('item_id', item.id).order('created_at'),
+      item.pair_item_id
+        ? supabase.from('items').select('id, item_key, tracker_id').eq('id', item.pair_item_id).maybeSingle()
+        : { data: null },
+    ])
+  for (const r of [sigs, revisions, itemAudit, links, editRoles, pins, coverage, readiness, comments, pair]) if (r.error) throw r.error
+
+  // ERs this test case's steps can verify.
+  const verified = links.data.filter((l) => l.direction === 'out' && l.link_type === 'verifies').map((l) => l.other_item_id)
   const revisionIds = revisions.data.map((r) => r.id)
-  const [revAudit, revLinks] = await Promise.all([
+  const [revAudit, revLinks, ers] = await Promise.all([
     supabase
       .from('audit_log')
       .select('id, occurred_at, table_name, record_id, action, changed_by, changed_fields, old_values, new_values, reason')
       .eq('table_name', 'item_revisions')
       .in('record_id', revisionIds),
     supabase.from('item_links').select('source_revision_id, link_type_id, target_item_id').in('source_revision_id', revisionIds),
+    hasSteps ? loadErs(verified) : [],
   ])
   for (const r of [revAudit, revLinks]) if (r.error) throw r.error
   const targetIds = [...new Set(revLinks.data.map((l) => l.target_item_id))]
@@ -52,29 +70,11 @@ async function fetchItem(projectId, typeKey, itemKey) {
   if (targetError) throw targetError
   const keyOf = Object.fromEntries(targets.map((t) => [t.id, t.item_key]))
 
-  // ERs: coverage of this item's ERs, or the ERs this test case's steps can verify.
-  const hasStatements = config.fields.some((f) => f.field_type === 'statements' && !f.is_retired)
-  const hasSteps = config.fields.some((f) => f.field_type === 'steps' && !f.is_retired)
-  const verified = links.data.filter((l) => l.direction === 'out' && l.link_type === 'verifies').map((l) => l.other_item_id)
-  const [coverage, ers] = await Promise.all([
-    hasStatements ? supabase.rpc('er_coverage', { p_item: item.id }) : { data: null },
-    hasSteps ? loadErs(verified) : [],
-  ])
-  if (coverage.error) throw coverage.error
   const statementKeys = config.fields.filter((f) => f.field_type === 'statements').map((f) => f.key)
   const usedNumbers = revisions.data.flatMap((r) => statementKeys.flatMap((k) => (r.values[k] ?? []).map((s) => s.n)))
   const linksByRevision = {}
   for (const l of revLinks.data)
     (linksByRevision[l.source_revision_id] ??= []).push({ type: l.link_type_id, target: keyOf[l.target_item_id] })
-
-  const [readiness, comments, pair] = await Promise.all([
-    supabase.rpc('item_readiness', { p_item: item.id }),
-    supabase.from('review_comments').select('*').eq('item_id', item.id).order('created_at'),
-    item.pair_item_id
-      ? supabase.from('items').select('id, item_key, tracker_id').eq('id', item.pair_item_id).maybeSingle()
-      : { data: null },
-  ])
-  for (const r of [readiness, comments, pair]) if (r.error) throw r.error
 
   return {
     config,
@@ -141,24 +141,46 @@ export default function ItemPage() {
   const [pairData, setPairData] = useState(null)
   const [error, setError] = useState('')
 
-  const load = useCallback(async () => {
-    const d = await fetchItem(project.id, typeKey, itemKey)
-    // The requirement's page shows its test case too.
-    const p = d.pair && d.config.tracker.is_pair_primary ? await fetchItem(project.id, d.pair.type_key, d.pair.item_key) : null
-    return [d, p]
-  }, [project.id, typeKey, itemKey])
+  const [refreshing, setRefreshing] = useState(false)
 
-  const reload = useCallback(
-    () =>
-      load().then(
-        ([d, p]) => {
-          setData(d)
-          setPairData(p)
-        },
-        (e) => setError(e.message),
-      ),
-    [load],
+  // The requirement's page shows its test case too. Both load at the same time: the test
+  // case's key is looked up straight away (or known from the last load) rather than after
+  // the requirement has finished loading.
+  const load = useCallback(
+    async (prev) => {
+      const typeOf = (key) => key.split('-')[0]
+      const pairKey = async () => {
+        if (prev) return prev.pair?.data ? prev.pair.data.item.item_key : null
+        const { data: row } = await supabase.from('items').select('pair_item_id').eq('project_id', project.id).eq('item_key', itemKey).maybeSingle()
+        if (!row?.pair_item_id) return null
+        const { data: partner } = await supabase.from('items').select('item_key').eq('id', row.pair_item_id).maybeSingle()
+        return partner?.item_key ?? null
+      }
+      const pairPromise = pairKey().then((key) =>
+        key ? fetchItem(project.id, typeOf(key), key, cacheOf(prev?.pair?.data)) : null,
+      )
+      const [d, p] = await Promise.all([fetchItem(project.id, typeKey, itemKey, cacheOf(prev?.data)), pairPromise])
+      return [d, d.pair && d.config?.tracker.is_pair_primary ? p : null]
+    },
+    [project.id, typeKey, itemKey],
   )
+
+  // After an action: load again, reusing what cannot have changed. The page stays as it is,
+  // marked as updating, until the new data is in, so buttons never show the old state.
+  const reload = useCallback(() => {
+    setRefreshing(true)
+    return load({ data, pair: { data: pairData } }).then(
+      ([d, p]) => {
+        setData(d)
+        setPairData(p)
+        setRefreshing(false)
+      },
+      (e) => {
+        setError(e.message)
+        setRefreshing(false)
+      },
+    )
+  }, [load, data, pairData])
 
   useEffect(() => {
     let current = true
@@ -188,10 +210,10 @@ export default function ItemPage() {
   if (data.pair && !data.config.tracker.is_pair_primary)
     return <Navigate to={`/projects/${project.id}/trackers/${data.pair.type_key}/${data.pair.item_key}#test-case`} replace />
 
-  return <ItemView ctx={ctx} data={data} pairData={pairData} reload={reload} />
+  return <ItemView ctx={ctx} data={data} pairData={pairData} reload={reload} refreshing={refreshing} />
 }
 
-function ItemView({ ctx, data, pairData, reload }) {
+function ItemView({ ctx, data, pairData, reload, refreshing }) {
   const { project, can, userId } = ctx
   const { typeKey } = useParams()
   const [editing, setEditing] = useState(null) // 'main' | 'pair'
@@ -209,7 +231,12 @@ function ItemView({ ctx, data, pairData, reload }) {
   const jointNow = paired && (d.joint(d.state) || d.joint(p.state))
 
   return (
-    <div className="stack">
+    <div className={`stack${refreshing ? ' is-refreshing' : ''}`} aria-busy={refreshing}>
+      {refreshing && (
+        <span className="refreshing-note" role="status">
+          Updating…
+        </span>
+      )}
       <nav className="breadcrumb" aria-label="Item breadcrumb">
         <Link to={`/projects/${project.id}/trackers`}>Trackers</Link> <span aria-hidden="true">/</span>{' '}
         <Link to={base}>{typeKey}</Link> <span aria-hidden="true">/</span> <span>{item.item_key}</span>
@@ -441,12 +468,12 @@ function ItemWorkflow({ ctx, data, d, pairData, p, reload, onEdit, onEditPair, s
     else if (!can('records.sign')) signBlocker = 'Your role cannot sign records in this project.'
     else if (d.madeByMe || p?.madeByMe) signBlocker = 'You made changes in this version, so someone else must review it.'
   }
-  const done = () => {
+  const done = async () => {
+    await reload()
     setMoving(null)
     setSigning(false)
     setStarting(false)
     setAssigning(false)
-    reload()
   }
 
   return (
@@ -583,9 +610,9 @@ function PairAuthoring({ ctx, data, d, pairData, p, reload, onEdit }) {
     setSending(true)
     setError('')
     const { error } = await supabase.rpc('transition_item', { p_item: data.item.id, p_to_state: firstReview.id })
-    setSending(false)
     if (error) setError(error.message)
-    else reload()
+    else await reload()
+    setSending(false)
   }
 
   return (
@@ -673,9 +700,9 @@ function ItemWorkflowFooter({ ctx, data, reload }) {
           item={item}
           editors={editors}
           onCancel={() => setAssigning(false)}
-          onDone={() => {
+          onDone={async () => {
+            await reload()
             setAssigning(false)
-            reload()
           }}
         />
       )}
@@ -749,9 +776,10 @@ function RejectForm({ data, pairData, from, to, onCancel, onDone }) {
           return { item: key, anchor, body: c.body.trim() }
         }),
     })
-    setSaving(false)
-    if (error) setError(error.message)
-    else onDone()
+    if (error) {
+      setSaving(false)
+      setError(error.message)
+    } else await onDone()
   }
 
   return (
@@ -1004,9 +1032,10 @@ function StartVersionForm({ item, pairItem, releases, onCancel, onDone }) {
     setSaving(true)
     setError('')
     const { error } = await supabase.rpc('start_revision', { p_item: item.id, p_reason: reason.trim(), p_release: release || null })
-    setSaving(false)
-    if (error) setError(error.message)
-    else onDone()
+    if (error) {
+      setSaving(false)
+      setError(error.message)
+    } else await onDone()
   }
 
   return (
@@ -1064,9 +1093,10 @@ function AssignForm({ item, editors, onCancel, onDone }) {
     setSaving(true)
     setError('')
     const { error } = await supabase.rpc('assign_item', { p_item: item.id, p_user: user || null, p_reason: reason.trim() || null })
-    setSaving(false)
-    if (error) setError(error.message)
-    else onDone()
+    if (error) {
+      setSaving(false)
+      setError(error.message)
+    } else await onDone()
   }
 
   return (
@@ -1159,9 +1189,10 @@ function MoveForm({ item, pairItem, move, from, config, onCancel, onDone }) {
       p_to_state: move.to.id,
       p_reason: reason.trim() || null,
     })
-    setSaving(false)
-    if (error) setError(error.message)
-    else onDone()
+    if (error) {
+      setSaving(false)
+      setError(error.message)
+    } else await onDone()
   }
 
   return (
@@ -1212,10 +1243,11 @@ function SignForm({ item, pairItem, state, onCancel, onDone }) {
     setSaving(true)
     setError('')
     const { error } = await supabase.rpc('sign_and_advance', { p_item: item.id, p_password: password })
-    setSaving(false)
     setPassword('')
-    if (error) setError(error.message)
-    else onDone()
+    if (error) {
+      setSaving(false)
+      setError(error.message)
+    } else await onDone()
   }
 
   return (
@@ -1527,9 +1559,10 @@ function LinkChange({ title, submitLabel, requireReason, canSubmit = true, onSub
     setSaving(true)
     setError('')
     const { error } = await onSubmit(reason.trim() || null)
-    setSaving(false)
-    if (error) setError(error.message)
-    else onDone()
+    if (error) {
+      setSaving(false)
+      setError(error.message)
+    } else await onDone()
   }
 
   return (

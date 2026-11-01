@@ -2604,3 +2604,25 @@ tr.is-missing .warn-cell {
     padding: 10px 12px;
   }
 }
+
+/* Item page while it reloads after an action: actions are paused, nothing jumps back */
+.is-refreshing .workflow-card,
+.is-refreshing .move-form {
+  opacity: 0.6;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.refreshing-note {
+  position: fixed;
+  top: calc(var(--topbar-height) + 10px);
+  right: 24px;
+  z-index: 40;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
+}
