@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { THEMES, getTheme, setTheme } from '../lib/theme'
 
-// Light, dark, or follow the computer's setting.
+// Light, dark, or follow the computer's setting. Shown on the account page.
 export default function ThemeSwitch() {
   const [theme, setChoice] = useState(getTheme)
   return (
-    <label className="theme-switch" title="Colour theme">
+    <label>
+      Theme
       <select
-        aria-label="Theme"
         value={theme}
         onChange={(e) => {
           setTheme(e.target.value)

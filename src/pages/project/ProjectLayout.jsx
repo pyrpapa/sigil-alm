@@ -69,7 +69,7 @@ export default function ProjectLayout({ session }) {
         <Link to="/">Projects</Link> <span aria-hidden="true">/</span> <span>{project.name}</span>
       </nav>
 
-      <div className="page-head">
+      <div className="page-head project-head">
         <div>
           <h1>{project.name}</h1>
           {project.system_under_validation && <div className="muted">{project.system_under_validation}</div>}

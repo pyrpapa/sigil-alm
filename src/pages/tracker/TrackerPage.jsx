@@ -237,11 +237,13 @@ function TrackerList({ data, view, setView, reload }) {
   return (
     <div className="stack">
       <div className="card-head">
-        <h2>
-          <Link to={`/projects/${project.id}/trackers`}>Trackers</Link> /{' '}
-          <span className="prefix">{hub ? `${data.config.tracker.type_key} + ${data.pair.config.tracker.type_key}` : typeKey}</span>{' '}
-          {hub ? 'Requirements & Test Cases' : config.tracker.name}
-        </h2>
+        <div>
+          <span className="eyebrow">
+            <Link to={`/projects/${project.id}/trackers`}>Trackers</Link> /{' '}
+            {hub ? `${data.config.tracker.type_key} + ${data.pair.config.tracker.type_key}` : typeKey}
+          </span>
+          <h2 className="page-title">{hub ? 'Requirements & Test Cases' : config.tracker.name}</h2>
+        </div>
         <div className="actions">
           {can('trackers.configure') && (
             <Link className="button secondary-link" to={`${base}/config`}>

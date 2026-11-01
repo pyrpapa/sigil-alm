@@ -1,42 +1,85 @@
 :root {
   color-scheme: light dark;
+  /* Colours, type and shape from the Sigil Design System (tokens.json). */
   --bg: #f6f7f9;
   --surface: #ffffff;
-  --text: #1c1f24;
-  --muted: #646b75;
-  --border: #dde1e6;
+  --surface-sunken: #f9fafb;
+  --surface-hover: #eef0f4;
+  --surface-active: #e6e9ef;
+  --text: #16181d;
+  --muted: #5d6470;
+  --border: #dde1e7;
+  --border-subtle: #eef0f4;
+  --border-strong: #c9ced6;
+  --border-control: #868d99;
   --accent: #3b4fd8;
+  --accent-hover: #2a3bb0;
+  --accent-subtle: #eceeff;
   --accent-text: #ffffff;
   --error: #b42318;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  line-height: 1.5;
+  --shadow-pop: 0 4px 16px rgba(22, 24, 29, 0.12);
+  --font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --control-md: 34px;
+  --control-sm: 28px;
+  --logo-green: #30a46c;
+  --logo-check: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
   color: var(--text);
   background: var(--bg);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --bg: #14161a;
-    --surface: #1d2025;
-    --text: #e8eaed;
-    --muted: #9aa1ab;
-    --border: #30343b;
-    --accent: #7d8cff;
+    --bg: #121418;
+    --surface: #1b1e24;
+    --surface-sunken: #20242b;
+    --surface-hover: #23272e;
+    --surface-active: #2a2f37;
+    --text: #e8eaee;
+    --muted: #9aa2ad;
+    --border: #2f343c;
+    --border-subtle: #262a31;
+    --border-strong: #3a3f48;
+    --border-control: #6b727d;
+    --accent: #8392ff;
+    --accent-hover: #a3aeff;
+    --accent-subtle: #1f2447;
     --accent-text: #0e1016;
     --error: #ff8a80;
+    --shadow-pop: 0 4px 16px rgba(0, 0, 0, 0.5);
+    --logo-green: #4cc38a;
+    --logo-check: #121418;
   }
 }
 
 /* Chosen in the app's theme switch: same colours, whatever the system says. */
 :root[data-theme='dark'] {
-  --bg: #14161a;
-  --surface: #1d2025;
-  --text: #e8eaed;
-  --muted: #9aa1ab;
-  --border: #30343b;
-  --accent: #7d8cff;
+  --bg: #121418;
+  --surface: #1b1e24;
+  --surface-sunken: #20242b;
+  --surface-hover: #23272e;
+  --surface-active: #2a2f37;
+  --text: #e8eaee;
+  --muted: #9aa2ad;
+  --border: #2f343c;
+  --border-subtle: #262a31;
+  --border-strong: #3a3f48;
+  --border-control: #6b727d;
+  --accent: #8392ff;
+  --accent-hover: #a3aeff;
+  --accent-subtle: #1f2447;
   --accent-text: #0e1016;
   --error: #ff8a80;
+  --shadow-pop: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --logo-green: #4cc38a;
+  --logo-check: #121418;
 }
 
 * {
@@ -219,8 +262,8 @@ button:disabled {
   --warn-bg: #fff4d6;
   --bad: #b42318;
   --bad-bg: #ffe4e1;
-  --neutral-bg: #eef0f3;
-  --preview-bg: #eef1ff;
+  --neutral-bg: #eef0f4;
+  --preview-bg: #eceeff;
   --info: #1f5fbf;
   --info-bg: #e3edff;
   --ready: #0e7470;
@@ -235,8 +278,8 @@ button:disabled {
     --warn-bg: #3a2c0b;
     --bad: #ff8a80;
     --bad-bg: #3d1614;
-    --neutral-bg: #262a31;
-    --preview-bg: #1c2140;
+    --neutral-bg: #23272e;
+    --preview-bg: #1f2447;
     --info: #8ab4ff;
     --info-bg: #182844;
     --ready: #5fd4cc;
@@ -252,8 +295,8 @@ button:disabled {
   --warn-bg: #3a2c0b;
   --bad: #ff8a80;
   --bad-bg: #3d1614;
-  --neutral-bg: #262a31;
-  --preview-bg: #1c2140;
+  --neutral-bg: #23272e;
+  --preview-bg: #1f2447;
   --info: #8ab4ff;
   --info-bg: #182844;
   --ready: #5fd4cc;
@@ -512,7 +555,7 @@ tbody tr:last-child td {
 }
 
 .prefix {
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-family: var(--font-mono);
   font-weight: 700;
   color: var(--accent);
 }
@@ -850,7 +893,7 @@ td > .step-kind {
 }
 
 .rec-clock {
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 1.35rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -1179,7 +1222,7 @@ details.version summary .badge {
 }
 
 .er-key {
-  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--accent);
@@ -1698,4 +1741,361 @@ tr.previewing td:first-child {
 .theme-switch select {
   padding: 0.3rem 0.4rem;
   font-size: 0.85rem;
+}
+
+/* ==== Sigil Design System: layout concept 1 (top bar + project tabs) ==== */
+h1,
+h2,
+.brand {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: 26px;
+  line-height: 32px;
+  font-weight: 600;
+}
+
+h2 {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+a {
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Controls */
+input,
+select,
+textarea {
+  border-color: var(--border-control);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+input:not([type='checkbox']):not([type='radio']):not([type='file']),
+select {
+  min-height: var(--control-md);
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent);
+}
+
+button,
+a.button {
+  min-height: var(--control-md);
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+}
+
+button:not(.secondary):not(.link-button):not(.tab):not(.title-button):not(.folder):hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+button.secondary,
+a.button.secondary-link {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  font-weight: 500;
+}
+
+button.secondary:hover,
+a.button.secondary-link:hover {
+  background: var(--surface-hover);
+  text-decoration: none;
+}
+
+button.small,
+button.secondary.small {
+  min-height: var(--control-sm);
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+/* Top bar */
+.topbar {
+  height: 56px;
+  padding: 0 max(16px, env(safe-area-inset-left, 0px));
+}
+
+@media (min-width: 761px) {
+  .topbar {
+    padding: 0 32px;
+  }
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+}
+
+
+.topbar-right {
+  font-size: 13px;
+  gap: 18px;
+}
+
+/* Page */
+.content {
+  max-width: 1200px;
+  padding: 24px 32px 40px;
+}
+
+.breadcrumb {
+  color: var(--muted);
+}
+
+.breadcrumb a {
+  color: var(--muted);
+}
+
+.page-head h1 + .muted {
+  margin-top: 2px;
+}
+
+/* Project tabs: muted links, active one ink with an accent underline */
+.tabs {
+  gap: 4px;
+  margin: 16px 0 24px;
+}
+
+.tabs a,
+.tabs .tab {
+  padding: 12px 14px;
+  font-size: 14px;
+  min-height: 0;
+}
+
+.tabs a:hover,
+.tabs .tab:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* Section labels and IDs */
+.eyebrow {
+  display: block;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.prefix {
+  font-weight: 500;
+}
+
+/* Tables: hairline box, sunken header, quiet row lines */
+.table-wrap {
+  border-radius: var(--radius-lg);
+}
+
+table {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+th,
+td {
+  padding: 10px 12px;
+  border-bottom-color: var(--border-subtle);
+  vertical-align: middle;
+}
+
+th {
+  background: var(--surface-sunken);
+  font-size: 12px;
+  font-weight: 500;
+  border-bottom-color: var(--border);
+}
+
+tbody tr:hover td {
+  background: var(--surface-hover);
+}
+
+tr.selected td,
+tbody tr.selected:hover td {
+  background: var(--accent-subtle);
+}
+
+td .prefix,
+td a .prefix,
+td > a:first-child {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* Cards and panels: border, no shadow */
+.card {
+  border-radius: var(--radius-lg);
+}
+
+.badge {
+  font-weight: 500;
+}
+
+/* Folders */
+.folders h3 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.folder {
+  border-radius: var(--radius-md);
+  padding: 6px 8px;
+  font-size: 13px;
+  min-height: 0;
+}
+
+.folder:hover {
+  background: var(--surface-hover);
+}
+
+.folder.active {
+  background: var(--surface-active);
+}
+
+/* State chips */
+.state-summary button {
+  min-height: 0;
+  background: var(--surface);
+}
+
+.state-summary button:hover {
+  background: var(--surface-hover);
+}
+
+/* Bulk bar */
+.bulk-bar {
+  border-color: var(--border);
+  box-shadow: var(--shadow-pop);
+}
+
+@media (max-width: 760px) {
+  .content {
+    padding: 16px max(16px, env(safe-area-inset-left, 0px)) 32px;
+  }
+}
+
+/* Text-like buttons keep their own size */
+button.link-button,
+.title-button,
+.state-summary button {
+  min-height: 0;
+}
+
+.page-title {
+  font-size: 26px;
+  line-height: 32px;
+}
+
+.eyebrow a {
+  color: var(--muted);
+}
+
+/* The project name sits above its tabs; each section's own title is the big one */
+.project-head {
+  margin: 4px 0 0;
+}
+
+.project-head h1 {
+  font-size: 20px;
+  line-height: 26px;
+}
+
+a.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+/* A note that informs rather than warns */
+.notice.info {
+  background: var(--info-bg);
+  border-color: transparent;
+  color: var(--text);
+}
+
+/* Tab rows scroll sideways only (no stray vertical scrollbar) */
+.tabs {
+  overflow-y: hidden;
+}
+
+.tabs a,
+.tabs .tab {
+  flex: none;
+}
+
+/* Logo */
+.brand {
+  color: var(--text);
+}
+
+.brand:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* Login: the logo large and centred, the motto set under it as its footer line */
+.login-stack {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+}
+
+.login-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.login-logo {
+  color: var(--text);
+  margin: 0;
+  line-height: 0;
+}
+
+.login-motto {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
 }

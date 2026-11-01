@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import Logo from '../components/Logo'
 
 // Sign-in only, no self-registration. Users are created by an admin
 // (Supabase dashboard for now), which is how access is controlled in a GxP tool.
@@ -26,40 +27,46 @@ export default function Login() {
 
   return (
     <div className="login">
-      <form className="card" onSubmit={handleSubmit}>
-        <h1>Sigil</h1>
-        <p className="muted">The automation-first validation ALM</p>
+      <div className="login-stack">
+        <header className="login-brand">
+          <h1 className="login-logo">
+            <Logo height={136} />
+          </h1>
+          <p className="login-motto">The automation-first validation ALM</p>
+        </header>
 
-        {isDemo && (
-          <p className="muted">Read-only demo account, on sample data. Just click Sign in.</p>
-        )}
+        <form className="card" onSubmit={handleSubmit}>
+          {isDemo && (
+            <p className="muted">Read-only demo account, on sample data. Just click Sign in.</p>
+          )}
 
-        <label>
-          Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
-        </label>
+          <label>
+            Email
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
+          </label>
 
-        <label>
-          Password
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
-        </label>
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+            />
+          </label>
 
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
 
-        <button type="submit" disabled={busy}>
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+          <button type="submit" disabled={busy}>
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

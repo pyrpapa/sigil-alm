@@ -62,6 +62,12 @@ export default function ItemForm({ config, members, releases = [], item = null, 
   return (
     <form className="card form-inline item-form" onSubmit={handleSubmit}>
       <h3>{item ? `Edit ${item.item_key}` : `New ${config.tracker.type_key} item`}</h3>
+      {!item && config.tracker.is_pair_primary && (
+        <p className="notice info small" role="note">
+          Saving also creates this requirement&apos;s test case, with the same number (SRS-012 comes with TC-012). You write its steps on
+          the requirement&apos;s <strong>Test case</strong> tab, and the two go through review together.
+        </p>
+      )}
       <label>
         <span>
           Title<span className="required" aria-hidden="true"> *</span>

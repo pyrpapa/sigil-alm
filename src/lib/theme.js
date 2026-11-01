@@ -1,20 +1,24 @@
-// Light / Dark / System. The choice is a per-browser convenience, kept in localStorage;
-// "system" (the default) follows the computer's setting. index.html applies the saved
-// choice before the page draws, so there is no flash of the wrong theme.
+// Dark / Light / System. Dark is the default until a person picks something else on their
+// account page. The choice is a per-browser convenience, kept in localStorage; "system"
+// follows the computer's setting. index.html applies it before the page draws, so there is
+// no flash of the wrong theme.
 const KEY = 'sigil-theme'
+export const DEFAULT_THEME = 'dark'
 
 export const THEMES = [
-  ['system', 'System'],
-  ['light', 'Light'],
   ['dark', 'Dark'],
+  ['light', 'Light'],
+  ['system', 'System'],
 ]
+
+const valid = (value) => value === 'light' || value === 'dark' || value === 'system'
 
 export function getTheme() {
   try {
     const value = localStorage.getItem(KEY)
-    return value === 'light' || value === 'dark' ? value : 'system'
+    return valid(value) ? value : DEFAULT_THEME
   } catch {
-    return 'system'
+    return DEFAULT_THEME
   }
 }
 
@@ -23,8 +27,7 @@ export function setTheme(value) {
   if (value === 'light' || value === 'dark') root.dataset.theme = value
   else delete root.dataset.theme
   try {
-    if (value === 'light' || value === 'dark') localStorage.setItem(KEY, value)
-    else localStorage.removeItem(KEY)
+    localStorage.setItem(KEY, valid(value) ? value : DEFAULT_THEME)
   } catch {
     // Storage blocked (private window): the choice lasts until the page is reloaded.
   }

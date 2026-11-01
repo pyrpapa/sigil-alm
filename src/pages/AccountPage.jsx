@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import ThemeSwitch from '../components/ThemeSwitch'
 
-// Your account: the printed name shown on your signatures, and your password.
+// Your account: the printed name shown on your signatures, your password, and the theme.
 export default function AccountPage({ session }) {
   const { reloadProfile } = useOutletContext() ?? {}
   const [profile, setProfile] = useState(null)
@@ -112,6 +113,12 @@ export default function AccountPage({ session }) {
           )}
         </div>
       </form>
+
+      <section className="card form-inline" aria-label="Appearance">
+        <h3>Appearance</h3>
+        <p className="small muted">Sigil is dark unless you choose otherwise. System follows your computer's light or dark setting. Saved in this browser only.</p>
+        <ThemeSwitch />
+      </section>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Outlet } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import ThemeSwitch from './ThemeSwitch'
+import Logo from './Logo'
 
 export default function Layout({ session }) {
   const [profile, setProfile] = useState(null)
@@ -23,8 +23,8 @@ export default function Layout({ session }) {
   return (
     <div className="shell">
       <header className="topbar">
-        <Link to="/" className="brand">
-          Sigil
+        <Link to="/" className="brand" aria-label="Sigil home">
+          <Logo height={34} compact />
         </Link>
         <nav className="topbar-right" aria-label="Main">
           <Link to="/reviews">My reviews</Link>
@@ -32,7 +32,6 @@ export default function Layout({ session }) {
           <Link to="/account" className="muted" title="Your account">
             {session.user.email}
           </Link>
-          <ThemeSwitch />
           <button type="button" className="secondary" onClick={() => supabase.auth.signOut()}>
             Sign out
           </button>
